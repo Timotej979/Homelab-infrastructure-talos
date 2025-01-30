@@ -17,3 +17,6 @@ crash.log
 
 # TalosOS images
 *.raw.xz
+*.raw.gz
+*.qcow2
+*.iso

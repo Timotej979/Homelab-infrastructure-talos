@@ -29,7 +29,7 @@ log_info() {
 show_help() {
     echo "Usage: $0 [TALOS_VERSION] [TALOS_MACHINE_TYPE] [TALOS_EXTENSIONS]"
     echo
-    echo "Fetch GCP image from the Talos Factory API."
+    echo "Fetch Akamai/Linode image from the Talos Factory API."
     echo
     echo "Arguments:"
     echo "  TALOS_VERSION       (Optional) Specify the Talos version to use."
@@ -97,6 +97,8 @@ generate_image_schematic() {
         log_error "Error: Extensions $TALOS_EXTENSIONS is not a valid JSON array. Please provide the extensions in the format '[\"extension1\", \"extension2\"]'"
         exit 1
     fi
+    log_success "Extensions are valid, using the following list of extencions:"
+    log_success "$TALOS_EXTENSIONS"
 
     # Generate the image schematic to send to the API
     log_info "Generating the image schematic to send to the API ..."
@@ -139,22 +141,23 @@ fetch_image_from_talos_factory() {
     # Check validity of the machine type
     log_info "Checking the validity of the machine type ..."
     if [[ -z "$TALOS_MACHINE_TYPE" ]]; then
-        TALOS_MACHINE_TYPE="arm64"  # Default value
+        TALOS_MACHINE_TYPE="amd64"  # Default value
     elif [[ "$TALOS_MACHINE_TYPE" -ne "amd64" ]]; then
         log_error "Error: Machine type $MACHINE_TYPE is not valid. Please provide one of the valid machine types which are: amd64"
         exit 1
     fi
+    log_success "Machine type is valid, using $TALOS_MACHINE_TYPE"
 
     # Fetch the image from the Talos Factory API
     log_info "Fetching the image from the Talos Factory API ..."
-    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/gcp-$TALOS_MACHINE_TYPE.raw.gz -o talos-aws-$TALOS_MACHINE_TYPE.raw.xz
+    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/akamai-$TALOS_MACHINE_TYPE.raw.gz -o talos-img.raw.gz
 
     # Check if the curl command was successful
     if [[ $? -ne 0 ]]; then
         log_error "Error: Failed to fetch the image from the Talos Factory API"
         exit 1
     else
-        log_success "Image for AWS cloud for $TALOS_MACHINE_TYPE AMI fetched successfully"
+        log_success "Machine image for Akamai/Linode cloud for $TALOS_MACHINE_TYPE fetched successfully"
     fi
 }
 
