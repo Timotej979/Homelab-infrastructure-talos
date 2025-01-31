@@ -150,7 +150,7 @@ fetch_image_from_talos_factory() {
 
     # Fetch the image from the Talos Factory API
     log_info "Fetching the image from the Talos Factory API ..."
-    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/azure-$TALOS_MACHINE_TYPE.raw.xz -o talos-img.raw.xz
+    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/azure-$TALOS_MACHINE_TYPE.vhd.xz -o talos-img.vhd.xz
 
     # Check if the curl command was successful
     if [[ $? -ne 0 ]]; then
@@ -158,6 +158,18 @@ fetch_image_from_talos_factory() {
         exit 1
     else
         log_success "Machine image for Azure cloud for $TALOS_MACHINE_TYPE fetched successfully"
+    fi
+
+    # Extract the image
+    log_info "Extracting the image ..."
+    unxz talos-img.raw.xz
+
+    # Check if the unxz command was successful
+    if [[ $? -ne 0 ]]; then
+        log_error "Error: Failed to extract the image"
+        exit 1
+    else
+        log_success "Machine image extracted successfully"
     fi
 }
 

@@ -150,7 +150,7 @@ fetch_image_from_talos_factory() {
 
     # Fetch the image from the Talos Factory API
     log_info "Fetching the image from the Talos Factory API ..."
-    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/gcp-$TALOS_MACHINE_TYPE.raw.gz -o talos-img.raw.gz
+    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/gcp-$TALOS_MACHINE_TYPE.raw.tar.gz -o talos-img.raw.tar.gz
 
     # Check if the curl command was successful
     if [[ $? -ne 0 ]]; then

@@ -10,19 +10,19 @@ RESET='\033[0m'         # Reset to default color
 
 # Logging functions for colored messages
 log_success() {
-    echo -e "${GREEN}[SUCCESS] $1${RESET}"
+    echo -e "${GREEN}[SUCCESS] $1${RESET}" >&2;
 }
 
 log_warning() {
-    echo -e "${ORANGE}[WARNING] $1${ORANGE}"
+    echo -e "${ORANGE}[WARNING] $1${ORANGE}" >&2;
 }
 
 log_error() {
-    echo -e "${RED}[ERROR] $1${RESET}"
+    echo -e "${RED}[ERROR] $1${RESET}" >&2;
 }
 
 log_info() {
-    echo -e "[INFO] $1"
+    echo -e "[INFO] $1" >&2;
 }
 
 # Help function to display usage
@@ -150,7 +150,7 @@ fetch_image_from_talos_factory() {
 
     # Fetch the image from the Talos Factory API
     log_info "Fetching the image from the Talos Factory API ..."
-    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/hcloud-$TALOS_MACHINE_TYPE.raw.gz -o talos-img.raw.gz
+    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/hcloud-$TALOS_MACHINE_TYPE.raw.xz -o talos-img.raw.xz
 
     # Check if the curl command was successful
     if [[ $? -ne 0 ]]; then
@@ -178,3 +178,6 @@ generate_image_schematic
 
 # Fetch the image from the Talos Factory API
 fetch_image_from_talos_factory
+
+# Output JSON to STDOUT so Packer can parse it
+echo "{\"version\": \"$TALOS_VERSION\", \"arch\": \"$TALOS_MACHINE_TYPE\"}"

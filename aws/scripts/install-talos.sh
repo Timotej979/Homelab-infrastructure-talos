@@ -159,6 +159,18 @@ fetch_image_from_talos_factory() {
     else
         log_success "Machine image for AWS cloud for $TALOS_MACHINE_TYPE fetched successfully"
     fi
+
+    # Extract the image
+    log_info "Extracting the image ..."
+    unxz talos-img.raw.xz
+
+    # Check if the extraction was successful
+    if [[ $? -ne 0 ]]; then
+        log_error "Error: Failed to extract the image"
+        exit 1
+    else
+        log_success "Machine image extracted successfully"
+    fi
 }
 
 

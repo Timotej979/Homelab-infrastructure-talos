@@ -159,6 +159,30 @@ fetch_image_from_talos_factory() {
     else
         log_success "Machine image for Oracle cloud for $TALOS_MACHINE_TYPE fetched successfully"
     fi
+
+    # Extract the image
+    log_info "Extracting the image ..."
+    unxz talos-img.raw.xz
+
+    # Check if the unxz command was successful
+    if [[ $? -ne 0 ]]; then
+        log_error "Error: Failed to extract the image"
+        exit 1
+    else
+        log_success "Machine image extracted successfully"
+    fi
+
+    # Convert the image to qcow2 format
+    log_info "Converting the image to qcow2 format ..."
+    qemu-img convert -f raw -O qcow2 talos-img.raw talos-img.qcow2
+
+    # Check if the conversion was successful
+    if [[ $? -ne 0 ]]; then
+        log_error "Error: Failed to convert the image to qcow2 format"
+        exit 1
+    else
+        log_success "Machine image converted to qcow2 format successfully"
+    fi
 }
 
 
