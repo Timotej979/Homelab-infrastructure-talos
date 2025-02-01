@@ -2,15 +2,16 @@ packer {
     required_plugins {
         hcloud = {
             source  = "github.com/hetznercloud/hcloud"
-            version = "~> 1"
+            version = ">= 1"
         }
         external = {
             source  = "github.com/joomcode/external"
-            version = "~> 0.0.2"
+            version = ">= 0.0.2"
         }
     }
 }
 
+#############################################
 variable "hcloud_token" {
     description = "The Hetzner Cloud API token"
     type        = string
@@ -35,27 +36,34 @@ variable "location" {
     }
 }
 
+#############################################
 data "external" "talos_info" {
   program = ["bash", "${path.root}/../scripts/talos-info.sh"]
 }
 
+#############################################
 locals {
     talos_version = data.external.talos_info.result.talos_version
     talos_arch = data.external.talos_info.result.talos_arch
-    img_path = "${path.root}/../scripts/talos-img.raw.gz"
+    img_path = "${path.root}/../scripts/talos-img.raw.xz"
 }
 
+#############################################
 source "hcloud" "talos" {
+    # The Hetzner Cloud API token
     token        = var.hcloud_token
+    
+    # The Hetzner Cloud server configuration
     rescue       = "linux64"
     image        = "debian-11"
     location     = var.location
     server_type  = var.server_type
     ssh_username = "root"
-
+    
     snapshot_name   = "talos-system-disk-${local.talos_arch}-${local.talos_version}"
+    
     snapshot_labels = {
-        platform  = "aws"
+        platform  = "hcloud"
         os        = "talos"
         version   = local.talos_version
         arch      = local.talos_arch
@@ -63,6 +71,7 @@ source "hcloud" "talos" {
     }
 }
 
+################################################
 build {
     hcp_packer_registry {
         description = "Homelab-infrastructure TalosOS images registry"
