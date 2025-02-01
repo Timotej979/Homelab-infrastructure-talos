@@ -51,7 +51,7 @@ locals {
 #############################################
 data "amazon-ami" "ubuntu" {
     filters = {
-        name = "ubuntu/images/*ubuntu-*-22.04-${local.talos_arch}-server-*"
+        name = "ubuntu/images/*ubuntu-jammy-22.04-${local.talos_arch}-server-*"
         virtualization-type = "hvm"
         root-device-type = "ebs"
     }
