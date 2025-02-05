@@ -24,16 +24,15 @@ jobs:
           fetch-depth: 1  
 
       - name: Run ShellCheck with SARIF output
-        uses: reactive-firewall/shellcheck-scan@v1
+        uses: reactive-firewall/shellcheck-scan@v1.1
         with:
           path: "**/*.sh"
           shell-format: ${{ matrix.shell }}
+          output: "shellcheck-${{ matrix.shell }}.sarif"  # Unique SARIF file per shell
 
-      - name: Debug - Show SARIF output
+      - name: Error if there is no SARIF output
         run: |
-          if [ -f shellcheck.sarif ]; then
-            cat shellcheck.sarif
-          else
+          if [ ! -f shellcheck-${{ matrix.shell }}.sarif ]; then
             echo "⚠️ No SARIF output generated!"
             exit 1
           fi
@@ -41,4 +40,4 @@ jobs:
       - name: Upload ShellCheck results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: shellcheck.sarif
+          sarif_file: shellcheck-${{ matrix.shell }}.sarif
