@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  PACKER_VERSION: "latest"
+
 jobs:
   packer-validate:
     name: Run Packer Validate for Multi-Cloud Templates
@@ -13,22 +16,46 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Packer
-        run: |
-          sudo apt-get update && sudo apt-get install -y packer
+        uses: hashicorp/setup-packer@main
+        id: setup
+        with:
+          version: ${{ env.PACKER_VERSION }}
 
       - name: Run Packer Validate for Multi-Cloud Templates
         run: |
+          # Initialize SARIF file
           echo '{"runs": [{"tool": {"driver": {"name": "Packer Validate", "informationUri": "https://developer.hashicorp.com/packer/docs/commands/validate"}},"results": [' > packer-results.sarif
           
-          find . -type d \( -path "./.github/workflows" -o -path "./.git" \) -prune -o \
-          -path "*/templates/*.pkr.hcl" -exec packer validate -syntax-only {} \; 2>&1 | \
-          awk '{print "{\"message\": {\"text\": \""$0"\"}},"}' >> packer-results.sarif || true
+          # Find all Packer template files (*.pkr.hcl) while excluding certain directories
+          find . \
+            -type d \( -path "./.github/workflows" -o -path "./.git" \) -prune -o \
+            -name "*.pkr.hcl" -print | while read -r file; do
 
+              # Get the directory of the file
+              template_dir=$(dirname "$file")
+
+              # Initialize Packer plugins in the directory
+              packer init "$template_dir"
+
+              # Run syntax-only validation
+              validation_output=$(packer validate -syntax-only "$file" 2>&1)
+              validation_status=$?
+
+              # If validation fails, log the error message in SARIF format
+              if [ $validation_status -ne 0 ]; then
+                echo "{\"message\": {\"text\": \"$validation_output\"}}," >> packer-results.sarif
+              fi
+          done
+
+          # Close SARIF JSON structure properly
           echo "{}]}]}' >> packer-results.sarif
-          sed -i '$ s/},$/}]/' packer-results.sarif  # Fix trailing comma issue
+
+          # Fix trailing comma issue in the SARIF file
+          sed -i '$ s/},$/}]/' packer-results.sarif
+  
 
       - name: Upload Packer Validate results to GitHub Security
         uses: github/codeql-action/upload-sarif@v2
