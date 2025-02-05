@@ -8,6 +8,7 @@ on:
 
 permissions:
   security-events: write
+  contents: read
 
 jobs:
   shellcheck:
@@ -20,8 +21,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1  
 
       - name: Run ShellCheck with SARIF output
         uses: reactive-firewall/shellcheck-scan@v1.1
