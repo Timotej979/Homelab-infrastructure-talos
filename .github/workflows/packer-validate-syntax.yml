@@ -48,7 +48,7 @@ jobs:
               packer init "$template_dir" 
 
               # Run syntax-only validation
-              echo "\e[36m[INFO]Running the syntax validation of the $file ...\e[0m"
+              echo "\e[36m[INFO] Running the syntax validation of the $file ...\e[0m"
               validation_output=$(packer validate -syntax-only "$file" 2>&1)
               validation_status=$?
 
@@ -63,15 +63,17 @@ jobs:
               fi
           done
 
-          echo "\e[36m[INFO] Closing SARIF JSON structure and fix trailing comma issue...\e[0m"
+          echo -e "\e[36m[INFO] Closing SARIF JSON structure and fix trailing comma issue...\e[0m"
 
           # Close SARIF JSON structure properly
           echo "{}]}]}' >> packer-results.sarif
 
+          echo "DEBUG: SARIF file content:"
+
           # Fix trailing comma issue in the SARIF file
           sed -i '$ s/},$/}]/' packer-results.sarif
 
-          echo "\e[32m[SUCCESS] Packer Validate completed successfully!\e[0m"
+          echo -e "\e[32m[SUCCESS] Packer Validate completed successfully!\e[0m"
 
 
       - name: Upload Packer Validate results to GitHub Security
