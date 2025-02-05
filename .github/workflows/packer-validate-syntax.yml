@@ -68,13 +68,11 @@ jobs:
           echo -e "\e[36m[INFO] Closing SARIF JSON structure and fix trailing comma issue...\e[0m"
 
           # Close SARIF JSON structure properly
-          echo '{"message": {"text": "Validation complete"}}]}]}]' >> packer-results.sarif
+          sed -i '$ s/,$//' packer-results.sarif
+          echo ']}]}]' >> packer-results.sarif
 
           echo "DEBUG: SARIF file content:"
           cat packer-results.sarif
-
-          # Fix trailing comma issue in the SARIF file
-          sed -i '$ s/},$/}]/' packer-results.sarif
 
           echo -e "\e[32m[SUCCESS] Packer Validate completed successfully!\e[0m"
 
