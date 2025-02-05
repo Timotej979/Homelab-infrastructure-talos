@@ -27,6 +27,15 @@ jobs:
         with:
           version: ${{ env.PACKER_VERSION }}
 
+      - name: Debug Environment
+        run: |
+          echo "Packer Version:"
+          packer version
+          echo "Current Directory:"
+          pwd
+          echo "List Files:"
+          ls -l
+
       - name: Run Packer Validate for Multi-Cloud Templates
         run: |
           # Initialize SARIF file
@@ -38,7 +47,7 @@ jobs:
             -name "*.pkr.hcl" -print | while read -r file; do
 
               # Echo which root folder is being processed (Green color, extract folder name)
-              echo -e "\e[32mProcessing file: $(echo "$file" | sed -E 's#^\./##; s#/.*##')...\e[0m"
+              echo -e "\e[1;36m[INFO] Processing file: $(echo "$file" | sed -E 's#^\./##; s#/.*##')...\e[0m"
 
               # Get the directory of the file
               template_dir=$(dirname "$file")
@@ -47,23 +56,31 @@ jobs:
               packer init "$template_dir"
 
               # Run syntax-only validation
-              echo "DEBUG: Running validate on '$file'"
+              echo "\e[1;36m[INFO]Running the syntax validation of the $file ...\e[0m"
               validation_output=$(packer validate -syntax-only "$file" 2>&1)
               validation_status=$?
 
               # If validation fails, log the error message in SARIF format
               if [ $validation_status -ne 0 ]; then
+                echo -e "\e[31m[ERROR] Validation failed for $file\e[0m"
+                echo -e "\e[33m[WARN] Validation output: $validation_output\e[0m"
                 escaped_output=$(echo "$validation_output" | jq -R -s '.')
-                echo "{\"message\": {\"text\": $escaped_output}}," >> packer-results.sarif
+                echo -e "\e[33m[WARN] {\"message\": {\"text\": $escaped_output}},\e[0m" >> packer-results.sarif
+              else
+                echo -e "\e[32m[SUCCESS]: Validation passed for $file\e[0m"
               fi
           done
+
+          echo "\e[1;36m[INFO] Closing SARIF JSON structure and fix trailing comma issue...\e[0m"
 
           # Close SARIF JSON structure properly
           echo "{}]}]}' >> packer-results.sarif
 
           # Fix trailing comma issue in the SARIF file
           sed -i '$ s/},$/}]/' packer-results.sarif
-  
+
+          echo "\e[32m[SUCCESS] Packer Validate completed successfully!\e[0m"
+
 
       - name: Upload Packer Validate results to GitHub Security
         uses: github/codeql-action/upload-sarif@v2
