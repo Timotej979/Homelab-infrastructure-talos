@@ -18,21 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run ShellCheck for install TalosOS scripts
-        run: |
-          # Find all install-talos.sh scripts while excluding certain directories
-          find . \
-            -type d \( -path "./.github/workflows" -o -path "./.git" \) -prune -o \
-            -path "*/scripts/install-talos.sh" \
-            -exec shellcheck --format=sarif {} + > shellcheck.sarif
-
-          # If ShellCheck produces an empty SARIF file, replace it with a valid empty SARIF structure
-          if [ ! -s shellcheck.sarif ]; then
-            echo '{"runs":[]}' > shellcheck.sarif
-          fi
-
-
-      - name: Upload ShellCheck results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Run ShellCheck with SARIF output
+        uses: reactive-firewall/shellcheck-scan@v1
         with:
-          sarif_file: shellcheck.sarif
+          path: "**/scripts/install-talos.sh"

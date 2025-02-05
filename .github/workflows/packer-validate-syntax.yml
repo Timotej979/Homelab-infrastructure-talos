@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  security-events: write
+
 env:
   PACKER_VERSION: "latest"
 
@@ -46,7 +49,8 @@ jobs:
 
               # If validation fails, log the error message in SARIF format
               if [ $validation_status -ne 0 ]; then
-                echo "{\"message\": {\"text\": \"$validation_output\"}}," >> packer-results.sarif
+                escaped_output=$(echo "$validation_output" | jq -R -s '.')
+                echo "{\"message\": {\"text\": $escaped_output}}," >> packer-results.sarif
               fi
           done
 
