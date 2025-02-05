@@ -13,12 +13,27 @@ jobs:
   shellcheck:
     name: Run ShellCheck for install TalosOS scripts
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shell: [bash, sh, dash, ksh]  # Test scripts with multiple shells
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Debug - List all install-talos.sh scripts
+        run: find . -path "*/scripts/install-talos.sh"
+
       - name: Run ShellCheck with SARIF output
         uses: reactive-firewall/shellcheck-scan@v1
         with:
           path: "**/scripts/install-talos.sh"
+          shell-format: ${{ matrix.shell }}
+
+      - name: Debug - Show SARIF output
+        run: cat shellcheck.sarif || echo "No SARIF output generated!"
+
+      - name: Upload ShellCheck results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: shellcheck.sarif

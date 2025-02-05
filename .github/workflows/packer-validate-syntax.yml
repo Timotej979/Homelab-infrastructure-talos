@@ -37,6 +37,9 @@ jobs:
             -type d \( -path "./.github/workflows" -o -path "./.git" \) -prune -o \
             -name "*.pkr.hcl" -print | while read -r file; do
 
+              # Echo which root folder is being processed
+              echo "Processing file: $file..."
+
               # Get the directory of the file
               template_dir=$(dirname "$file")
 
