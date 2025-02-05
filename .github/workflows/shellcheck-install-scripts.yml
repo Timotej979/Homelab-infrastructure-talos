@@ -26,5 +26,4 @@ jobs:
         uses: reactive-firewall/shellcheck-scan@v1.1
         with:
           shell-format: ${{ matrix.shell }}
-          output: "shellcheck-${{ matrix.shell }}.sarif"
           publish-artifacts: no
