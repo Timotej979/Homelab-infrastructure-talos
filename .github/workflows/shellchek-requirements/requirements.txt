@@ -1,0 +1,2 @@
+requests>=2.25.1
+sarif_om>=0.1.0
