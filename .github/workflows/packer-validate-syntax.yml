@@ -1,0 +1,36 @@
+name: Packer Validate Syntax (Multicloud)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  packer-validate:
+    name: Run Packer Validate for Multi-Cloud Templates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Packer
+        run: |
+          sudo apt-get update && sudo apt-get install -y packer
+
+      - name: Run Packer Validate for Multi-Cloud Templates
+        run: |
+          echo '{"runs": [{"tool": {"driver": {"name": "Packer Validate", "informationUri": "https://developer.hashicorp.com/packer/docs/commands/validate"}},"results": [' > packer-results.sarif
+          
+          find . -type d \( -path "./.github/workflows" -o -path "./.git" \) -prune -o \
+          -path "*/templates/*.pkr.hcl" -exec packer validate -syntax-only {} \; 2>&1 | \
+          awk '{print "{\"message\": {\"text\": \""$0"\"}},"}' >> packer-results.sarif || true
+
+          echo "{}]}]}' >> packer-results.sarif
+          sed -i '$ s/},$/}]/' packer-results.sarif  # Fix trailing comma issue
+
+      - name: Upload Packer Validate results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: packer-results.sarif

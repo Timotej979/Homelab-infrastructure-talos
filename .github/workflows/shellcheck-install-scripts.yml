@@ -1,0 +1,26 @@
+name: Install TalosOS Script ShellCheck
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    name: Run ShellCheck for install TalosOS scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run ShellCheck for install TalosOS scripts
+        run: |
+          find . -type d \( -path "./.github/workflows" -o -path "./.git" \) -prune -o \
+          -path "*/scripts/install-talos.sh" -exec shellcheck --format=sarif {} + > shellcheck.sarif || true
+
+      - name: Upload ShellCheck results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: shellcheck.sarif
