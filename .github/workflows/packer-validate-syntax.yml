@@ -37,8 +37,8 @@ jobs:
             -type d \( -path "./.github/workflows" -o -path "./.git" \) -prune -o \
             -name "*.pkr.hcl" -print | while read -r file; do
 
-              # Echo which root folder is being processed
-              echo "Processing file: $file..."
+              # Echo which root folder is being processed (Green color, extract folder name)
+              echo -e "\e[32mProcessing file: $(echo "$file" | sed -E 's#^\./##; s#/.*##')...\e[0m"
 
               # Get the directory of the file
               template_dir=$(dirname "$file")
@@ -47,6 +47,7 @@ jobs:
               packer init "$template_dir"
 
               # Run syntax-only validation
+              echo "DEBUG: Running validate on '$file'"
               validation_output=$(packer validate -syntax-only "$file" 2>&1)
               validation_status=$?
 
