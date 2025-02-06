@@ -48,7 +48,7 @@ show_help() {
 }
 
 # Check if help flag is used
-if [ "$1" == "--help" || "$1" == "-h" ]; then
+if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
     show_help
 fi
 
@@ -58,13 +58,10 @@ get_correct_image_version() {
 
     # Get the list of versions from the Talos Factory API
     log_info "Fetching the list of TalosOS versions from the API ..."
-    TALOS_VERSIONS_LIST=$(curl -s -X GET $TALOS_IMAGE_FACTORY_URL/versions)
-
-    # Check if the curl command was successful
-    if [ $? -ne 0 ]; then
+    TALOS_VERSIONS_LIST=$(curl -s -X GET "$TALOS_IMAGE_FACTORY_URL/versions") || {
         log_error "Error: Failed to fetch TalosOS versions from the API"
         exit 1
-    fi
+    }
 
     # Fetch the latest version if the version is not provided
     if [ -z "$TALOS_VERSION" ] || [ "$TALOS_VERSION" = "latest" ]; then
@@ -150,15 +147,12 @@ fetch_image_from_talos_factory() {
 
     # Fetch the image from the Talos Factory API
     log_info "Fetching the image from the Talos Factory API ..."
-    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/digital-ocean-$TALOS_MACHINE_TYPE.raw.gz -o talos-img.raw.gz
-
-    # Check if the curl command was successful
-    if [ $? -ne 0 ]; then
+    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/digital-ocean-$TALOS_MACHINE_TYPE.raw.gz -o talos-img.raw.gz || {
         log_error "Error: Failed to fetch the image from the Talos Factory API"
         exit 1
-    else
-        log_success "Machine image for Digital Ocean cloud for $TALOS_MACHINE_TYPE fetched successfully"
-    fi
+    }
+
+    log_success "Machine image for Digital Ocean cloud for $TALOS_MACHINE_TYPE fetched successfully"
 }
 
 
