@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eo pipefail
+(set -eo pipefail 2> /dev/null) && set -eo pipefail
 
 # Color codes
 GREEN='\033[38;5;82m'   # Bright green
@@ -80,7 +80,7 @@ get_correct_image_version() {
         exit 1
     fi
 
-    export TALOS_VERSION=$TALOS_VERSION
+    export TALOS_VERSION="$TALOS_VERSION"
 }
 
 # Function to generate the image schematic for the Alicloud image
