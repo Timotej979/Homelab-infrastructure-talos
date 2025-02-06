@@ -18,7 +18,7 @@ log_warning() {
 }
 
 log_error() {
-    ptrintf "${RED}[ERROR] %s${RESET}\n" "$1"
+    printf "${RED}[ERROR] %s${RESET}\n" "$1"
 }
 
 log_info() {
@@ -48,7 +48,7 @@ show_help() {
 }
 
 # Check if help flag is used
-if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+if [ "$1" == "--help" || "$1" == "-h" ]; then
     show_help
 fi
 
@@ -61,13 +61,13 @@ get_correct_image_version() {
     TALOS_VERSIONS_LIST=$(curl -s -X GET $TALOS_IMAGE_FACTORY_URL/versions)
 
     # Check if the curl command was successful
-    if [[ $? -ne 0 ]]; then
+    if [ $? -ne 0 ]; then
         log_error "Error: Failed to fetch TalosOS versions from the API"
         exit 1
     fi
 
     # Fetch the latest version if the version is not provided
-    if [[ -z "$TALOS_VERSION" || "$TALOS_VERSION" -eq "latest" ]]; then
+    if [ -z "$TALOS_VERSION" ] || [ "$TALOS_VERSION" = "latest" ]; then
         log_info "Fetching latest version..."
         TALOS_VERSION=$(echo "$TALOS_VERSIONS_LIST" | jq -r '.[]' | grep -oE '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
         log_success "Latest version is $TALOS_VERSION"
@@ -75,7 +75,7 @@ get_correct_image_version() {
 
     # Validate if the provided version exists in the list
     log_info "Validating the version provided/extracted ..."
-    if [[ "$TALOS_VERSIONS_LIST" == *"$TALOS_VERSION"* ]]; then
+    if [ "$TALOS_VERSIONS_LIST" == *"$TALOS_VERSION"* ]; then
         log_success "Version $TALOS_VERSION is valid"
     else
         log_error "Error: Version $TALOS_VERSION is not valid. Please provide one of the valid versions which are: $TALOS_VERSIONS_LIST"
@@ -91,7 +91,7 @@ generate_image_schematic() {
 
     # Check the validity of the extensions
     log_info "Checking the validity of the extensions ..."
-    if [[ -z "$TALOS_EXTENSIONS" ]]; then
+    if [ -z "$TALOS_EXTENSIONS" ]; then
         TALOS_EXTENSIONS='[]'   # Default value
     elif ! echo "$TALOS_EXTENSIONS" | jq empty > /dev/null 2>&1; then
         log_error "Error: Extensions $TALOS_EXTENSIONS is not a valid JSON array. Please provide the extensions in the format '[\"extension1\", \"extension2\"]'"
@@ -121,7 +121,7 @@ generate_image_schematic() {
                                  -d "$TALOS_SCHEMATIC_SPECIFICATION")
 
     # Check if the curl command was successful
-    if [[ $? -ne 0 ]]; then
+    if [ $? -ne 0 ]; then
         log_error "Error: Failed to generate the image schematic"
         exit 1
     else
@@ -140,9 +140,9 @@ fetch_image_from_talos_factory() {
 
     # Check validity of the machine type
     log_info "Checking the validity of the machine type ..."
-    if [[ -z "$TALOS_MACHINE_TYPE" ]]; then
+    if [ -z "$TALOS_MACHINE_TYPE" ]; then
         TALOS_MACHINE_TYPE="amd64"  # Default value
-    elif [[ "$TALOS_MACHINE_TYPE" -ne "amd64" || "$TALOS_MACHINE_TYPE" -ne "arm64" ]]; then
+    elif [ "$TALOS_MACHINE_TYPE" != "amd64" ] && [ "$TALOS_MACHINE_TYPE" != "arm64" ]; then
         log_error "Error: Machine type $MACHINE_TYPE is not valid. Please provide one of the valid machine types which are: amd64, arm64"
         exit 1
     fi
@@ -153,7 +153,7 @@ fetch_image_from_talos_factory() {
     curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/metal-$TALOS_MACHINE_TYPE.iso -o talos-img.iso
 
     # Check if the curl command was successful
-    if [[ $? -ne 0 ]]; then
+    if [ $? -ne 0 ]; then
         log_error "Error: Failed to fetch the image from the Talos Factory API"
         exit 1
     else
