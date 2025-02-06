@@ -39,10 +39,10 @@ show_help() {
     echo "                                 Check list of available extensions at https://github.com/siderolabs/extensions"
     echo 
     echo "Examples:"
-    echo "  $0                                                             Fetch latest version with arm64 machine type."
-    echo "  $0 v1.9.3                                                      Fetch version v1.9.3."
-    echo "  $0 v1.9.3 amd64                                                Fetch version v1.9.3 with amd64 machine type."
-    echo "  $0 v1.9.3 amd64 '["siderolabs/gvisor", "siderolabs/amd-ucode"]'    Fetch version v1.9.3 with extensions."
+    echo "  $0                                                                 Fetch latest version with arm64 machine type."
+    echo "  $0 v1.9.3                                                          Fetch version v1.9.3."
+    echo "  $0 v1.9.3 amd64                                                    Fetch version v1.9.3 with amd64 machine type."
+    echo "  $0 v1.9.3 amd64 '[\"siderolabs/gvisor\", \"siderolabs/amd-ucode\"]'    Fetch version v1.9.3 with extensions."
     echo 
     exit 0
 }
@@ -126,7 +126,7 @@ generate_image_schematic() {
     log_info "Extracting the schematic ID from the response ..."
     TALOS_SCHEMATIC_ID=$(echo "$RESPONSE" | jq -r '.id')
 
-    export TALOS_SCHEMATIC_ID=$TALOS_SCHEMATIC_ID
+    export TALOS_SCHEMATIC_ID="$TALOS_SCHEMATIC_ID"
 }
 
 fetch_image_from_talos_factory() {
