@@ -76,7 +76,7 @@ get_correct_image_version() {
 
     # Validate if the provided version exists in the list
     log_info "Validating the version provided/extracted ..."
-    if [ "$TALOS_VERSIONS_LIST" == *"$TALOS_VERSION"* ]; then
+    if echo "$TALOS_VERSIONS_LIST" | sed 's/[][]//g' | tr -d '"' | tr ',' '\n' | grep -Fxq "$TALOS_VERSION"; then
         log_success "Version $TALOS_VERSION is valid"
     else
         log_error "Error: Version $TALOS_VERSION is not valid. Please provide one of the valid versions which are: $TALOS_VERSIONS_LIST"
