@@ -48,7 +48,7 @@ show_help() {
 }
 
 # Check if help flag is used
-if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     show_help
 fi
 
@@ -147,7 +147,7 @@ fetch_image_from_talos_factory() {
 
     # Fetch the image from the Talos Factory API
     log_info "Fetching the image from the Talos Factory API ..."
-    curl -X GET $TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/oracle-$TALOS_MACHINE_TYPE.raw.xz -o talos-img.raw.xz || {
+    curl -X GET "$TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/oracle-$TALOS_MACHINE_TYPE.raw.xz" -o talos-img.raw.xz || {
         log_error "Error: Failed to fetch the image from the Talos Factory API"
         exit 1
     }
