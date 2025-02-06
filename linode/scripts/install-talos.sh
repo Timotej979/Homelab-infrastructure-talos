@@ -10,19 +10,19 @@ RESET='\033[0m'         # Reset to default color
 
 # Logging functions for colored messages
 log_success() {
-    printf "${GREEN}[SUCCESS] $1${RESET}\n"
+    printf "${GREEN}[SUCCESS] %s${RESET}\n" "$1"
 }
 
 log_warning() {
-    printf "${ORANGE}[WARNING] $1${ORANGE}\n"
+    printf "${ORANGE}[WARNING] %s${ORANGE}\n" "$1"
 }
 
 log_error() {
-    ptrintf "${RED}[ERROR] $1${RESET}\n"
+    ptrintf "${RED}[ERROR] %s${RESET}\n" "$1"
 }
 
 log_info() {
-    printf "[INFO] $1\n"
+    printf "[INFO] %s\n" "$1"
 }
 
 # Help function to display usage
