@@ -116,19 +116,16 @@ generate_image_schematic() {
     log_info "Sending the image schematic to the Talos Factory API ..."
     RESPONSE=$(curl -s -X POST $TALOS_IMAGE_FACTORY_URL/schematics \
                                  -H "Content-Type: application/json" \
-                                 -d "$TALOS_SCHEMATIC_SPECIFICATION")
-
-    # Check if the curl command was successful
-    if [ $? -ne 0 ]; then
+                                 -d "$TALOS_SCHEMATIC_SPECIFICATION") || {
         log_error "Error: Failed to generate the image schematic"
         exit 1
-    else
-        log_success "Image schematic generated successfully"
-    fi
+    }
+
+    log_success "Image schematic generated successfully"
 
     # Extract the schematic ID from the response
     log_info "Extracting the schematic ID from the response ..."
-    TALOS_SCHEMATIC_ID=$(echo $RESPONSE | jq -r '.id')
+    TALOS_SCHEMATIC_ID=$(echo "$RESPONSE" | jq -r '.id')
 
     export TALOS_SCHEMATIC_ID=$TALOS_SCHEMATIC_ID
 }
