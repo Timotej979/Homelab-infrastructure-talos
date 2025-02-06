@@ -143,7 +143,7 @@ fetch_image_from_talos_factory() {
 
     # Fetch the image from the Talos Factory API
     log_info "Fetching the image from the Talos Factory API ..."
-    curl -X GET "$TALOS_IMAGE_FACTORY_URL/image/$TALOS_SCHEMATIC_ID/$TALOS_VERSION/metal-$TALOS_MACHINE_TYPE.qcow2" -o talos-img.qcow2 || {
+    curl -X GET "$(printf "%s/image/%s/%s/metal-%s.qcow2" "$TALOS_IMAGE_FACTORY_URL" "$TALOS_SCHEMATIC_ID" "$TALOS_VERSION" "$TALOS_MACHINE_TYPE")" -o talos-img.qcow2 || {
         log_error "Error: Failed to fetch the image from the Talos Factory API"
         exit 1
     }
