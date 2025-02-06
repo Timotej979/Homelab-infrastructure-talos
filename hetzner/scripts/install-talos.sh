@@ -10,19 +10,19 @@ RESET='\033[0m'         # Reset to default color
 
 # Logging functions for colored messages
 log_success() {
-    echo -e "${GREEN}[SUCCESS] $1${RESET}" >&2;
+    printf "${GREEN}[SUCCESS] $1${RESET}\n"
 }
 
 log_warning() {
-    echo -e "${ORANGE}[WARNING] $1${ORANGE}" >&2;
+    printf "${ORANGE}[WARNING] $1${ORANGE}\n"
 }
 
 log_error() {
-    echo -e "${RED}[ERROR] $1${RESET}" >&2;
+    ptrintf "${RED}[ERROR] $1${RESET}\n"
 }
 
 log_info() {
-    echo -e "[INFO] $1" >&2;
+    printf "[INFO] $1\n"
 }
 
 # Help function to display usage
