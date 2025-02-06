@@ -1,7 +1,5 @@
 #!/bin/bash
 
-(set -eo pipefail 2> /dev/null) && set -eo pipefail
-
 # Color codes
 GREEN='\033[38;5;82m'   # Bright green
 ORANGE='\033[38;5;208m' # Bright orange
