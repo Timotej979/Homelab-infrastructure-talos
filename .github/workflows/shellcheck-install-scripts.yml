@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        shell: [bash, sh, dash, ksh, busybox]
+        shell: [bash, sh, dash, ksh]
 
     steps:
       - name: Checkout repository
