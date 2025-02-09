@@ -29,8 +29,31 @@ jobs:
 
       - name: Run Packer Validate for Multi-Cloud Templates
         run: |
+          # Logging functions for colored messages
+          log_success() {
+              printf "${GREEN}[SUCCESS] %s${RESET}\n" "$1"
+          }
+          log_warning() {
+              printf "${ORANGE}[WARNING] %s${ORANGE}\n" "$1"
+          }
+          log_error() {
+              printf "${RED}[ERROR] %s${RESET}\n" "$1"
+          }
+          log_info() {
+              printf "[INFO] %s\n" "$1"
+          }
+
           # Initialize SARIF file
-          echo '{"runs": [{"tool": {"driver": {"name": "Packer Validate", "informationUri": "https://developer.hashicorp.com/packer/docs/commands/validate"}},"results": [' > packer-results.sarif
+          echo "{ \"version\": \"2.1.0\", \
+                  \"\$schema\": \"https://json.schemastore.org/sarif-2.1.0.json\", \
+                  \"runs\": [\
+                    { \"tool\": \
+                      { \"driver\": \
+                        { \"name\": \"Packer Validate\", \
+                          \"informationUri\": \"https://developer.hashicorp.com/packer/docs/commands/validate\" \
+                        }\
+                      },\
+                      \"results\": [\"" > packer-results.sarif
           
           # Find all Packer template files (*.pkr.hcl) while excluding certain directories
           find . \
@@ -38,34 +61,43 @@ jobs:
             -name "*.pkr.hcl" -print | while read -r file; do
 
               # Echo which root folder is being processed (Green color, extract folder name)
-              folder=$(echo "$file" | sed -E 's#^\./##; s#/.*##')
-              echo -e "\e[36m[INFO] Processing folder: $folder...\e[0m"
+              folder=$(echo "$file" | sed -E 's#^\./##; s#/.*##') || {
+                log_error "Failed to extract folder name from $file"
+                
+              }
+              log_info "Processing $folder..."
 
               # Get the directory of the file
-              template_dir=$(dirname "$file")
+              template_dir=$(dirname "$file") || {
+                log_error "Failed to get the directory of $file" 
+              }
 
               # Initialize Packer plugins in the directory
-              echo -e "\e[36m[INFO] Initializing Packer plugins in the $template_dir...\e[0m"
-              packer init "$template_dir" 
+              log_info "Initializing Packer plugins in $template_dir..."
+              packer init "$template_dir" || {
+                log_error "Failed to initialize Packer plugins in $template_dir"
+              }
 
               # Run syntax-only validation
-              echo "\e[36m[INFO] Running the syntax validation of the $file ...\e[0m"
-              validation_output=$(packer validate -syntax-only "$file" 2>&1)
+              log_info "Running syntax-only validation for $file..."
+              validation_output=$(packer validate -syntax-only "$file" 2>&1) 
               validation_status=$?
 
               # If validation fails, log the error message in SARIF format
               if [ $validation_status -ne 0 ]; then
-                echo -e "\e[31m[ERROR] Validation failed for $file\e[0m"
-                echo -e "\e[33m[WARN] Validation output: $validation_output\e[0m"
+                log_error "Validation failed for $file"
+                log_warning "$validation_output"
                 escaped_output=$(echo "$validation_output" | jq -R -s '.')
-                echo -e "\e[33m[WARN] {\"message\": {\"text\": $escaped_output}},\e[0m" >> packer-results.sarif
+                log_warning "Escaped output: $escaped_output"
               else
-                echo -e "\e[32m[SUCCESS]: Validation passed for $file\e[0m"
-                echo -e ""
+                log_success "Validation passed for $file"
+                log_success ""
               fi
           done
 
-          echo -e "\e[36m[INFO] Closing SARIF JSON structure and fix trailing comma issue...\e[0m"
+          log_success "Packer Validate commands completed successfully!"
+
+          log_info "Closing Packer Validate SARIF file..."
 
           # Close SARIF JSON structure properly
           sed -i '$ s/,$//' packer-results.sarif
@@ -74,7 +106,7 @@ jobs:
           echo "DEBUG: SARIF file content:"
           cat packer-results.sarif
 
-          echo -e "\e[32m[SUCCESS] Packer Validate completed successfully!\e[0m"
+          log_success "Packer Validate SARIF file created successfully!"
 
       - name: Create a Packer Validate SARIF artifact
         uses: actions/upload-artifact@v4
