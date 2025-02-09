@@ -13,7 +13,7 @@ permissions:
 jobs:
   shellcheck:
     name: Run ShellCheck for install TalosOS scripts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         shell: [bash, sh, dash, ksh]

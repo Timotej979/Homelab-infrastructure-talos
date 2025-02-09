@@ -10,12 +10,12 @@ permissions:
   security-events: write
 
 env:
-  PACKER_VERSION: "latest"
+  PACKER_VERSION: "1.12.0"
 
 jobs:
   packer-validate:
     name: Run Packer Validate for Multi-Cloud Templates
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout repository
