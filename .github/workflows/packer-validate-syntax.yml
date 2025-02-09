@@ -69,7 +69,7 @@ jobs:
 
           # Close SARIF JSON structure properly
           sed -i '$ s/,$//' packer-results.sarif
-          echo ']}]}]' >> packer-results.sarif
+          echo ']}]}' >> packer-results.sarif
 
           echo "DEBUG: SARIF file content:"
           cat packer-results.sarif
