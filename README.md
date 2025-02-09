@@ -6,13 +6,18 @@
 
 ---
 
-<div align="center">
-  [![CVE Repository Scan](https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml/badge.svg?branch=main)](https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml)
+<p align="center">
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml/badge.svg?branch=main" alt="CVE Repository Scan">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/cve-repository-scan.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/cve-repository-scan.yml/badge.svg?branch=main" alt="Shellcheck TalosOS Script">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/packer-validate-syntax.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/packer-validate-syntax.yml/badge.svg?branch=main" alt="Packer Validate Syntax">
+  </a>
+</p>
 
-  [![Shellcheck TalosOS Script](https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/cve-repository-scan.yml/badge.svg?branch=main)](https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/cve-repository-scan.yml)
-
-  [![Packer Validate Syntax](https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/packer-validate-syntax.yml/badge.svg?branch=main)](https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/packer-validate-syntax.yml)
-</div>
 
 ---
 

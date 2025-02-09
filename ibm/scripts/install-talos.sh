@@ -112,7 +112,7 @@ generate_image_schematic() {
 
     # Send the image schematic to the Talos Factory API
     log_info "Sending the image schematic to the Talos Factory API ..."
-    RESPONSE=$(curl -s -X POST $TALOS_IMAGE_FACTORY_URL/schematics \
+    RESPONSE=$(curl -s -X POST "$TALOS_IMAGE_FACTORY_URL/schematics" \
                                  -H "Content-Type: application/json" \
                                  -d "$TALOS_SCHEMATIC_SPECIFICATION") || {
         log_error "Error: Failed to generate the image schematic"
