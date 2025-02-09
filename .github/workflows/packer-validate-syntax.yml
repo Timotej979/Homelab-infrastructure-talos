@@ -37,7 +37,7 @@ jobs:
 
           # Logging functions for colored messages
           log_success() {
-              printf "${GREEN}[SUCCESS] %s${RESET}\n" "$1"
+              printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"
           }
           log_warning() {
               printf "${ORANGE}[WARNING] %s${ORANGE}\n" "$1"
@@ -77,10 +77,10 @@ jobs:
           
           # Find all Packer template files (*.pkr.hcl) while excluding certain directories
           find . \
-            -type d \( -path "./.github/workflows" -o -path "./.git" \) -prune -o \
+            -type d \( -path "./.github/workflows" -o -path "./.git" -o -path "./docs" \) -prune -o \
             -name "*.pkr.hcl" -print | while read -r file; do
 
-              # Echo which root folder is being processed (Green color, extract folder name)
+              # Echo which root folder is being processed
               folder=$(echo "$file" | sed -E 's#^\./##; s#/.*##') || {
                 log_error "Failed to extract folder name from $file"
               }
@@ -132,7 +132,6 @@ jobs:
 
               else
                 log_success "Validation passed for $file"
-                printf "\n"
               fi
           done
 
@@ -144,9 +143,6 @@ jobs:
           echo "] }] }" >> packer-results.sarif
 
           log_success "Packer Validate SARIF file created successfully!"
-
-          echo "DEBUG: SARIF file content:"
-          cat packer-results.sarif
 
       - name: Create a Packer Validate SARIF artifact
         uses: actions/upload-artifact@v4
