@@ -29,6 +29,12 @@ jobs:
 
       - name: Run Packer Validate for Multi-Cloud Templates
         run: |
+          # Color codes
+          GREEN='\033[38;5;82m'   # Bright green
+          ORANGE='\033[38;5;208m' # Bright orange
+          RED='\033[38;5;196m'    # Bright red
+          RESET='\033[0m'         # Reset to default color
+
           # Logging functions for colored messages
           log_success() {
               printf "${GREEN}[SUCCESS] %s${RESET}\n" "$1"
@@ -125,7 +131,7 @@ jobs:
 
               else
                 log_success "Validation passed for $file"
-                log_success ""
+                printf "\n"
               fi
           done
 
