@@ -34,6 +34,8 @@ git push
 
 If the pipeline is successful, the new image will be available in the packer registry. Otherwise check the logs of the pipeline to see what went wrong.
 
+---
+
 To change the Talos OS version/architecture to build do the following (**The example uses the AWS platform, however the process is the same for all platforms**):
 
 1. For your desired platform check how the Talos OS version is passed to the `./<platform_name>/scripts/install-talos.sh` script.
