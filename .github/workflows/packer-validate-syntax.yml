@@ -76,6 +76,11 @@ jobs:
 
           echo -e "\e[32m[SUCCESS] Packer Validate completed successfully!\e[0m"
 
+      - name: Create a Packer Validate SARIF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: packer-results.sarif
 
       - name: Upload Packer Validate results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
