@@ -46,14 +46,27 @@ jobs:
           # Initialize SARIF file
           echo "{ \"version\": \"2.1.0\", \
                   \"\$schema\": \"https://json.schemastore.org/sarif-2.1.0.json\", \
-                  \"runs\": [\
-                    { \"tool\": \
-                      { \"driver\": \
-                        { \"name\": \"Packer Validate\", \
-                          \"informationUri\": \"https://developer.hashicorp.com/packer/docs/commands/validate\" \
-                        }\
-                      },\
-                      \"results\": [\"" > packer-results.sarif
+                  \"runs\": [{\
+                    \"tool\": {\ 
+                      \"driver\": {\
+                        \"name\": \"Packer Validate (Multi-Cloud)\", \
+                        \"fullName\": \"Packer Validate (Multi-Cloud)\", \
+                        \"version\": \"${{ env.PACKER_VERSION }}\", \
+                        \"informationUri\": \"https://developer.hashicorp.com/packer/docs/commands/validate\", \
+                        \"rules\": [{ \
+                          \"id\": \"PV001\", \
+                          \"name\": \"PackerValidationError\", \
+                          \"fullDescription\": { \
+                            \"text\": \"A validation error occurred while checking the Packer template.\" \
+                          }, \
+                          \"helpUri\": \"https://developer.hashicorp.com/packer/docs/commands/validate\", \
+                          \"help\": { \
+                            \"text\": \"Ensure your Packer template is correctly formatted and meets all validation requirements.\" \
+                          } \
+                        }] \
+                      }\
+                    },\
+                  \"results\": [\"" > packer-results.sarif
           
           # Find all Packer template files (*.pkr.hcl) while excluding certain directories
           find . \
@@ -63,7 +76,6 @@ jobs:
               # Echo which root folder is being processed (Green color, extract folder name)
               folder=$(echo "$file" | sed -E 's#^\./##; s#/.*##') || {
                 log_error "Failed to extract folder name from $file"
-                
               }
               log_info "Processing $folder..."
 
@@ -85,10 +97,32 @@ jobs:
 
               # If validation fails, log the error message in SARIF format
               if [ $validation_status -ne 0 ]; then
-                log_error "Validation failed for $file"
-                log_warning "$validation_output"
-                escaped_output=$(echo "$validation_output" | jq -R -s '.')
-                log_warning "Escaped output: $escaped_output"
+                
+                # Log error message
+                log_error "Validation failed for $file with exit status $validation_status"
+                escaped_output=$(echo "$validation_output" | jq -R -s '.') || {
+                  log_error "Failed to escape validation output for $file"
+                }
+                
+                # Add error message to SARIF file
+                log_info "Adding error message to SARIF file..."
+                echo "{ \
+                  \"ruleId\": \"PV001\", \
+                  \"ruleIndex\": 0, \
+                  \"level\": \"error\", \
+                  \"message\": { \
+                    \"text\": \"Validation failed for $file with exit status $validation_status: $escaped_output\" \
+                  }, \
+                  \"locations\": [{ \
+                    \"physicalLocation\": { \
+                      \"artifactLocation\": { \
+                        \"uri\": \"$file\" \
+                      } \
+                    } \
+                  }] \
+                }," >> packer-results.sarif
+                log_info "Error message added to SARIF file for $file"
+
               else
                 log_success "Validation passed for $file"
                 log_success ""
