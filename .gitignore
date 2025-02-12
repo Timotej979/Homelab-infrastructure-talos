@@ -20,3 +20,4 @@ crash.log
 *.raw.gz
 *.qcow2
 *.iso
+*.vhd

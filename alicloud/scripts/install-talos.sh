@@ -149,6 +149,15 @@ fetch_image_from_talos_factory() {
     }
 
     log_success "Machine image for Alicloud for $TALOS_MACHINE_TYPE fetched successfully"
+
+    # Convert image from qcow2 to vhd
+    log_info "Converting the image from qcow2 to vhd format ..."
+    qemu-img convert -f qcow2 -O vpc talos-img.qcow2 talos-img.vhd || {
+        log_error "Error: Failed to convert the image from qcow2 to vhd format"
+        exit 1
+    }
+
+    log_success "Image converted successfully to vhd format"
 }
 
 

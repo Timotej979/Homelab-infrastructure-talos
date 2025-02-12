@@ -101,4 +101,10 @@ build {
         "xz -d -c /tmp/talos.raw.xz | dd of=/dev/sda bs=1M && sync"
         ]
     }
+
+    post-processor "shell-local" {
+        inline = [
+            "trivy image $(packer manifest inspect | jq -r '.builds[0].artifact_id') -f json -o trivy-report.json"
+        ]
+    }
 }
