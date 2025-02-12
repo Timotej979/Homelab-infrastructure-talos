@@ -58,6 +58,7 @@ locals {
     talos_version = data.external.talos_info.result.talos_version
     talos_arch = data.external.talos_info.result.talos_arch
     img_path = "${path.root}/../scripts/talos-img.raw.xz"
+    azure_image_name = local.talos_arch == "amd64" ? "ubuntu-2004-lts-amd64" : "ubuntu-2004-lts-arm64"
 }
 
 #############################################

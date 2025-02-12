@@ -2,7 +2,7 @@ packer {
     required_plugins {
         alicloud = {
             source  = "github.com/hashicorp/alicloud"
-            version = ">= 1.2.8"
+            version = ">= 1.1.2"
         }
         external = {
             source  = "github.com/joomcode/external"

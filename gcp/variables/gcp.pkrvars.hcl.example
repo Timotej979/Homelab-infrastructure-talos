@@ -1,0 +1,5 @@
+gcp_project_id   = "your-gcp-project-id"
+gcp_access_token = "your-gcp-access-token"
+
+gcp_zone          = "europe-west1-b"
+gcp_instance_type = "t2a-standard-4"

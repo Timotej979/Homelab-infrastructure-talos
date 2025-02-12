@@ -29,20 +29,20 @@ This repository ia a collection of independently-versioned packer release proces
 Requirements for using the automatic build pipeline comprising of install-scripts, packer configurations, security scans and release processes:
 
 - Install scripts:
-  - [POSIX Shell](https://pubs.opengroup.org/onlinepubs/9699919799/)
-  - [jq](https://stedolan.github.io/jq/)
-  - [curl](https://curl.se/)
-  - [qemu-img](https://www.qemu.org/)
+  - POSIX Shell ([Link](https://pubs.opengroup.org/onlinepubs/9699919799/))
+  - jq ([Link](https://stedolan.github.io/jq/))
+  - curl ([Link](https://curl.se/))
+  - quemu-img ([Link](https://www.qemu.org/))
 
 - Packer configurations:
-  - [Packer](https://www.packer.io/)
+  - Packer ([Link](https://www.packer.io/))
 
 - Security scans:
-  - [Trivy](https://trivy.dev/latest/)
-  - [ShellCheck](https://www.shellcheck.net/)
+  - Trivy ([Link](https://trivy.dev/latest/))
+  - ShellCheck ([Link](https://www.shellcheck.net/))
 
 - Release processes:
-  - [GitHub Actions](https://github.com/features/actions)
+  - Github Actions ([Link](https://github.com/features/actions))
 
 
 ## Usage
