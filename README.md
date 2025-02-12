@@ -23,6 +23,28 @@
 
 This repository ia a collection of independently-versioned packer release processes for machine images of Talos OS for various platforms. The packer configurations are designed to be run in a CI/CD pipeline to build and release new versions of Talos OS images on a regular basis.
 
+
+## Requirements
+
+Requirements for using the automatic build pipeline comprising of install-scripts, packer configurations, security scans and release processes:
+
+- Install scripts:
+  - [POSIX Shell](https://pubs.opengroup.org/onlinepubs/9699919799/)
+  - [jq](https://stedolan.github.io/jq/)
+  - [curl](https://curl.se/)
+  - [qemu-img](https://www.qemu.org/)
+
+- Packer configurations:
+  - [Packer](https://www.packer.io/)
+
+- Security scans:
+  - [Trivy](https://trivy.dev/latest/)
+  - [ShellCheck](https://www.shellcheck.net/)
+
+- Release processes:
+  - [GitHub Actions](https://github.com/features/actions)
+
+
 ## Usage
 
 To build a new version of a Talos OS image just commit an empty commit to the repository. The CI/CD pipeline will automatically build the new image using the latest stable Talos OS version (This runs by default) and save it to the packer registry.
