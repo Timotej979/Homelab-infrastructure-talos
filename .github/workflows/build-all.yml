@@ -45,19 +45,19 @@ jobs:
           # Define all possible cloud images
           log_info "Defining all possible cloud images..."
           ALL_IMAGES='[
-            { "name": "alicloud", "path": "build-alicloud.yml@main" },
-            { "name": "aws", "path": "build-aws.yml@main" },
+            { "name": "alicloud", "path": "build-alicloud.yml" },
+            { "name": "aws", "path": "build-aws.yml" },
             { "name": "azure", "path": "build-azure.yml@main" },
-            { "name": "digital_ocean", "path": "build-digital-ocean.yml@main" },
-            { "name": "gcp", "path": "build-gcp.yml@main" },
-            { "name": "hetzner", "path": "build-hetzner.yml@main" },
-            { "name": "huawei", "path": "build-huawei.yml@main" },
-            { "name": "ibm", "path": "build-ibm.yml@main" },
-            { "name": "linode", "path": "build-linode.yml@main" },
-            { "name": "oci", "path": "build-oci.yml@main" },
-            { "name": "ovh", "path": "build-ovh.yml@main" },
-            { "name": "tencent", "path": "build-tencent.yml@main" },
-            { "name": "vultr", "path": "build-vultr.yml@main" }
+            { "name": "digital_ocean", "path": "build-digital-ocean.yml" },
+            { "name": "gcp", "path": "build-gcp.yml" },
+            { "name": "hetzner", "path": "build-hetzner.yml" },
+            { "name": "huawei", "path": "build-huawei.yml" },
+            { "name": "ibm", "path": "build-ibm.yml" },
+            { "name": "linode", "path": "build-linode.yml" },
+            { "name": "oci", "path": "build-oci.yml" },
+            { "name": "ovh", "path": "build-ovh.yml" },
+            { "name": "tencent", "path": "build-tencent.yml" },
+            { "name": "vultr", "path": "build-vultr.yml" }
           ]' || {
             log_error "Failed to define all possible cloud images!"
             exit 1
@@ -102,4 +102,24 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Image
-        uses: ./.github/workflows/${{ matrix.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Define colors for logging
+          GREEN='\033[38;5;82m'   # Bright green
+          ORANGE='\033[38;5;208m' # Bright orange
+          RED='\033[38;5;196m'    # Bright red
+          RESET='\033[0m'         # Reset to default color
+
+          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
+          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
+          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
+          log_info() { printf "[INFO] %s\n" "$1"; }
+
+          # Trigger the build workflow for each image
+          log_info "Triggering build workflow for ${{ matrix.name }}..."
+          gh workflow run "${{ matrix.path }}" --ref main || {
+            log_error "Failed to trigger build workflow for ${{ matrix.name }}!"
+            exit 1
+          }
+          log_success "Successfully triggered build workflow for ${{ matrix.name }}."
