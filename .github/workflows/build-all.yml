@@ -84,7 +84,7 @@ jobs:
 
           # Output the build matrix
           log_info "Outputting build matrix to GitHub Actions..."
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT" || {
+          echo "matrix=$(echo "$MATRIX" | jq -c)" >> "$GITHUB_OUTPUT" || {
             log_error "Failed to output build matrix to GitHub Actions!"
             exit 1
           }
