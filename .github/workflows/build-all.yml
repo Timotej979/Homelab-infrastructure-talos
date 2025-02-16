@@ -1,64 +1,78 @@
 name: Build ALL Images
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       build_all_images:
         description: 'Build all images'
+        type: boolean
         required: true
-        default: 'true'
+        default: true
       build_alicloud_image:
         description: 'Build Alicloud image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_aws_image:
         description: 'Build AWS image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_azure_image:
         description: 'Build Azure image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_digital_ocean_image:
         description: 'Build Digital Ocean image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_gcp_image:
         description: 'Build GCP image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_hetzner_image:
         description: 'Build Hetzner image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_huawei_image:
         description: 'Build Huawei image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_ibm_image:
         description: 'Build IBM image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_linode_image:
         description: 'Build Linode image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_oci_image:
         description: 'Build Oracle Cloud image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_ovh_image:
         description: 'Build OVH image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_tencent_image:
         description: 'Build Tencent image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
       build_vultr_image:
         description: 'Build Vultr image'
+        type: boolean
         required: true
-        default: 'false'
+        default: false
 
 jobs:
   determine-matrix:
