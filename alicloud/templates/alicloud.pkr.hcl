@@ -64,7 +64,6 @@ source "alicloud-ecs" "talos" {
     image_name = "talos-system-disk-${local.talos_arch}-${local.talos_version}"
     image_description = "Talos OS ${local.talos_version} for ${local.talos_arch}"
 
-    associate_public_ip_address = true
     io_optimized = true
     internet_charge_type = "PayByTraffic"
     skip_image_validation = true

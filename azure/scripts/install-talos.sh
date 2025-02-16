@@ -147,13 +147,6 @@ fetch_image_from_talos_factory() {
         exit 1
     }
 
-    # Extract the image
-    log_info "Extracting the image ..."
-    unxz talos-img.raw.xz || {
-        log_error "Error: Failed to extract the image"
-        exit 1
-    }
-
     log_success "Machine image extracted successfully"
 }
 

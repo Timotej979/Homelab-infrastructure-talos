@@ -58,7 +58,7 @@ locals {
     talos_version = data.external.talos_info.result.talos_version
     talos_arch = data.external.talos_info.result.talos_arch
     img_path = "${path.root}/../scripts/talos-img.raw.xz"
-    azure_image_name = local.talos_arch == "amd64" ? "ubuntu-2004-lts-amd64" : "ubuntu-2004-lts-arm64"
+    azure_image_sku = local.talos_arch == "amd64" ? "11" : "11-arm64"
 }
 
 #############################################
@@ -68,18 +68,21 @@ source "azure-arm" "talos" {
     client_secret   = var.azure_client_secret
     subscription_id = var.azure_subscription_id
     tenant_id       = var.azure_tenant_id
+    location        = var.azure_region
 
-    source_image_reference = data.azure_image.ubuntu.id
+    # # The Azure server configuration
+    resource_group_name   = "talos-rg"
+    os_type               = "Linux"
+    image_publisher       = "Debian"
+    image_offer           = "debian-11"
+    image_sku             = local.azure_image_sku
     vm_size               = var.azure_vm_size
-    ssh_username          = "ubuntu"
+    ssh_username          = "debian"
 
-    image_name           = "talos-system-disk-${local.talos_arch}-${local.talos_version}"
-    image_description    = "Talos OS ${local.talos_version} for ${local.talos_arch}"
-    image_publisher      = "Talos"
-    image_offer          = "Talos OS"
-    image_sku            = "1.0"
+    managed_image_name    = "talos-system-disk-${local.talos_arch}-${local.talos_version}"
+    managed_image_resource_group_name = "talos-rg"
   
-    tags = {
+    azure_tags = {
         platform  = "azure"
         os        = "talos"
         version   = local.talos_version
@@ -90,6 +93,14 @@ source "azure-arm" "talos" {
 
 #############################################
 build {
+    hcp_packer_registry {
+        description = "Homelab-infrastructure TalosOS images registry"
+        bucket_name = "homelab-infrastructure-talos"
+        bucket_labels = {
+            "packer_version" = packer.version
+        }
+    }
+
     sources = ["source.azure-arm.talos"]
 
     provisioner "file" {
