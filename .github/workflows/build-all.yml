@@ -1,5 +1,9 @@
 name: Build ALL Images
 
+permissions:
+  actions: write
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:

@@ -1,14 +1,14 @@
 name: Install TalosOS Script ShellCheck
 
+permissions:
+  security-events: write
+  contents: read
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
-permissions:
-  security-events: write
-  contents: read
 
 jobs:
   shellcheck:

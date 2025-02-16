@@ -1,13 +1,13 @@
 name: Packer Validate Syntax (Multicloud)
 
+permissions:
+  security-events: write
+
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
-permissions:
-  security-events: write
 
 env:
   PACKER_VERSION: "1.12.0"
