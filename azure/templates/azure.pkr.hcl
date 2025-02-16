@@ -57,7 +57,7 @@ data "external" "talos_info" {
 locals {
     talos_version = data.external.talos_info.result.talos_version
     talos_arch = data.external.talos_info.result.talos_arch
-    img_path = "${path.root}/../scripts/talos-img.raw.xz"
+    img_path = "${path.root}/../scripts/talos-img.vhd.xz"
     azure_image_sku = local.talos_arch == "amd64" ? "11" : "11-arm64"
 }
 
@@ -105,12 +105,15 @@ build {
 
     provisioner "file" {
         source      = local.img_path
-        destination = "/tmp/talos.raw.xz"
+        destination = "/tmp/talos.vhd.xz"
     }
+
+    # Maybe add another shell-local provider to upload the image to the registry 
+    # (Simmilar alternative approach can be used for other cloud platforms if direct overwrite is not possible, might even be better)
 
     provisioner "shell" {
         inline = [
-        "xz -d -c /tmp/talos.raw.xz | dd of=/dev/sda bs=1M && sync"
+        "xz -d -c /tmp/talos.vhd.xz | dd of=/dev/sda bs=1M && sync"
         ]
     }
 
