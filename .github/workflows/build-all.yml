@@ -51,7 +51,7 @@ jobs:
           ALL_IMAGES='[
             { "name": "alicloud", "path": "build-alicloud.yml" },
             { "name": "aws", "path": "build-aws.yml" },
-            { "name": "azure", "path": "build-azure.yml@main" },
+            { "name": "azure", "path": "build-azure.yml" },
             { "name": "digital_ocean", "path": "build-digital-ocean.yml" },
             { "name": "gcp", "path": "build-gcp.yml" },
             { "name": "hetzner", "path": "build-hetzner.yml" },
