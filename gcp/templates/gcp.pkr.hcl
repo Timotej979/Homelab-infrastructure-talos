@@ -57,7 +57,7 @@ source "googlecompute" "talos" {
     zone          = var.gcp_zone
 
     # The GCP server configuration
-    source_image  = data.googlecompute_image.ubuntu.self_link
+    source_image  = local.gcp_image_name
     machine_type  = var.gcp_instance_type
     ssh_username  = "ubuntu"
 
