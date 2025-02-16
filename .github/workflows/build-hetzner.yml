@@ -1,6 +1,7 @@
 name: Build Hetzner Image
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 jobs:

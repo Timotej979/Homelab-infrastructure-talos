@@ -1,78 +1,16 @@
 name: Build ALL Images
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       build_all_images:
         description: 'Build all images'
-        type: boolean
         required: true
-        default: true
-      build_alicloud_image:
-        description: 'Build Alicloud image'
-        type: boolean
-        required: true
-        default: false
-      build_aws_image:
-        description: 'Build AWS image'
-        type: boolean
-        required: true
-        default: false
-      build_azure_image:
-        description: 'Build Azure image'
-        type: boolean
-        required: true
-        default: false
-      build_digital_ocean_image:
-        description: 'Build Digital Ocean image'
-        type: boolean
-        required: true
-        default: false
-      build_gcp_image:
-        description: 'Build GCP image'
-        type: boolean
-        required: true
-        default: false
-      build_hetzner_image:
-        description: 'Build Hetzner image'
-        type: boolean
-        required: true
-        default: false
-      build_huawei_image:
-        description: 'Build Huawei image'
-        type: boolean
-        required: true
-        default: false
-      build_ibm_image:
-        description: 'Build IBM image'
-        type: boolean
-        required: true
-        default: false
-      build_linode_image:
-        description: 'Build Linode image'
-        type: boolean
-        required: true
-        default: false
-      build_oci_image:
-        description: 'Build Oracle Cloud image'
-        type: boolean
-        required: true
-        default: false
-      build_ovh_image:
-        description: 'Build OVH image'
-        type: boolean
-        required: true
-        default: false
-      build_tencent_image:
-        description: 'Build Tencent image'
-        type: boolean
-        required: true
-        default: false
-      build_vultr_image:
-        description: 'Build Vultr image'
-        type: boolean
-        required: true
-        default: false
+        default: 'true'
+      exclude_images:
+        description: 'Exclude images (comma-separated list, e.g., "aws,azure")'
+        required: false
+        default: ''
 
 jobs:
   determine-matrix:
@@ -82,69 +20,86 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     
     steps:
-    - name: Generate Build Matrix
-      id: set-matrix
-      run: |
-        # Color codes
-        GREEN='\033[38;5;82m'   # Bright green
-        ORANGE='\033[38;5;208m' # Bright orange
-        RED='\033[38;5;196m'    # Bright red
-        RESET='\033[0m'         # Reset to default color
+      - name: Generate Build Matrix
+        id: set-matrix
+        run: |
+          # Define colors for logging
+          GREEN='\033[38;5;82m'   # Bright green
+          ORANGE='\033[38;5;208m' # Bright orange
+          RED='\033[38;5;196m'    # Bright red
+          RESET='\033[0m'         # Reset to default color
 
-        # Logging functions for colored messages
-        log_success() {
-            printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"
-        }
-        log_warning() {
-            printf "${ORANGE}[WARNING] %s${ORANGE}\n" "$1"
-        }
-        log_error() {
-            printf "${RED}[ERROR] %s${RESET}\n" "$1"
-        }
-        log_info() {
-            printf "[INFO] %s\n" "$1"
-        }
-      
-        # Generate build matrix
-        log_info "Generating build matrix..."
+          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
+          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
+          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
+          log_info() { printf "[INFO] %s\n" "$1"; }
 
-        MATRIX=$(jq -n '[ \
-          { name: "alicloud", path: "build-alicloud.yml@main",           flag: "${{ github.event.inputs.build_alicloud_image }}" }, \
-          { name: "aws", path: "build-aws.yml@main",                     flag: "${{ github.event.inputs.build_aws_image }}" }, \
-          { name: "azure", path: "build-azure.yml@main",                 flag: "${{ github.event.inputs.build_azure_image }}" }, \
-          { name: "digital_ocean", path: "build-digital-ocean.yml@main", flag: "${{ github.event.inputs.build_digital_ocean_image }}" }, \
-          { name: "gcp", path: "build-gcp.yml@main",                     flag: "${{ github.event.inputs.build_gcp_image }}" }, \
-          { name: "hetzner", path: "build-hetzner.yml@main",             flag: "${{ github.event.inputs.build_hetzner_image }}" }, \
-          { name: "huawei", path: "build-huawei.yml@main",               flag: "${{ github.event.inputs.build_huawei_image }}" }, \
-          { name: "ibm", path: "build-ibm.yml@main",                     flag: "${{ github.event.inputs.build_ibm_image }}" }, \
-          { name: "linode", path: "build-linode.yml@main",               flag: "${{ github.event.inputs.build_linode_image }}" }, \
-          { name: "oci", path: "build-oci.yml@main",                     flag: "${{ github.event.inputs.build_oci_image }}" }, \
-          { name: "ovh", path: "build-ovh.yml@main",                     flag: "${{ github.event.inputs.build_ovh_image }}" }, \
-          { name: "tencent", path: "build-tencent.yml@main",             flag: "${{ github.event.inputs.build_tencent_image }}" }, \
-          { name: "vultr", path: "build-vultr.yml@main",                 flag: "${{ github.event.inputs.build_vultr_image }}" } \
-        ] | map(select(.flag == "true" or "${{ github.event.inputs.build_all_images }}" == "true")) | map({name, path})') || {
-          log_error "Failed to generate build matrix."
-          exit 1 
-        }
+          # Convert excluded images to an array
+          log_info "Parsing excluded images..."
+          IFS=',' read -ra EXCLUDED <<< "${{ github.event.inputs.exclude_images }}" || {
+            log_error "Failed to parse excluded images!"
+            exit 1
+          }
+          log_success "Successfully parsed excluded images."
+          
+          # Define all possible cloud images
+          log_info "Defining all possible cloud images..."
+          ALL_IMAGES='[
+            { "name": "alicloud", "path": "build-alicloud.yml@main" },
+            { "name": "aws", "path": "build-aws.yml@main" },
+            { "name": "azure", "path": "build-azure.yml@main" },
+            { "name": "digital_ocean", "path": "build-digital-ocean.yml@main" },
+            { "name": "gcp", "path": "build-gcp.yml@main" },
+            { "name": "hetzner", "path": "build-hetzner.yml@main" },
+            { "name": "huawei", "path": "build-huawei.yml@main" },
+            { "name": "ibm", "path": "build-ibm.yml@main" },
+            { "name": "linode", "path": "build-linode.yml@main" },
+            { "name": "oci", "path": "build-oci.yml@main" },
+            { "name": "ovh", "path": "build-ovh.yml@main" },
+            { "name": "tencent", "path": "build-tencent.yml@main" },
+            { "name": "vultr", "path": "build-vultr.yml@main" }
+          ]' || {
+            log_error "Failed to define all possible cloud images!"
+            exit 1
+          }
+          log_success "Successfully defined all possible cloud images."
 
-        log_success "Successfully generated build matrix."
+          # Create a filtered build matrix
+          log_info "Filtering build matrix..."
+          MATRIX=$(echo "$ALL_IMAGES" | jq --argjson excluded "$(printf '%s\n' "${EXCLUDED[@]}" | jq -R . | jq -s .)" '
+            map(select(.name as $name | $excluded | index($name) | not))
+          ') || {
+            log_error "Failed to filter build matrix!"
+            exit 1
+          }
+          log_success "Successfully filtered build matrix."
 
-        # Output build matrix
-        log_info "Outputting build matrix..."
-        echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT" || {
-          log_error "Failed to output build matrix."
-          exit 1
-        }
-        
-        log_success "Successfully outputted build matrix."
+          # Ensure matrix is not empty
+          log_info "Checking if build matrix is empty..."
+          if [[ -z "$MATRIX" || "$MATRIX" == "[]" ]]; then
+            log_error "No images to build after exclusions!"
+            exit 1
+          fi
+          log_success "Build matrix is not empty."
+
+          # Output the build matrix
+          log_info "Outputting build matrix to GitHub Actions..."
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT" || {
+            log_error "Failed to output build matrix to GitHub Actions!"
+            exit 1
+          }
+          log_success "Successfully output build matrix to GitHub Actions."
 
   build-images:
     needs: determine-matrix
     runs-on: ubuntu-24.04
+
     strategy:
       matrix: ${{ fromJson(needs.determine-matrix.outputs.matrix) }}
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    - name: Build Image
-      run: ./.github/workflows/builds/${{ matrix.path }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Image
+        uses: ./.github/workflows/${{ matrix.path }}

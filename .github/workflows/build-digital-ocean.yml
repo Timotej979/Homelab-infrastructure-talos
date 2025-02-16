@@ -1,6 +1,7 @@
 name: Build Digital Ocean Image
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 jobs:

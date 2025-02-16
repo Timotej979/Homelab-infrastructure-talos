@@ -1,8 +1,10 @@
 name: Build Azure Image
 
 on:
+  workflow_call:
   workflow_dispatch:
-    
+
+
 jobs:
   build:
     name: Build Azure Image

@@ -1,6 +1,7 @@
 name: Build Oracle Cloud Image
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 jobs:

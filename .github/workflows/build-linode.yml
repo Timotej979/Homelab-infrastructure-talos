@@ -1,6 +1,7 @@
 name: Build Linode Image
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 jobs:
