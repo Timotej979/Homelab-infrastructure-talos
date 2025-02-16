@@ -84,11 +84,12 @@ jobs:
 
           # Output the build matrix
           log_info "Outputting build matrix to GitHub Actions..."
-          echo "matrix=$(echo "$MATRIX" | jq -c)" >> "$GITHUB_OUTPUT" || {
+          echo "matrix=$(echo "$MATRIX" | jq -c '{include: .}')" >> "$GITHUB_OUTPUT" || {
             log_error "Failed to output build matrix to GitHub Actions!"
             exit 1
           }
           log_success "Successfully output build matrix to GitHub Actions."
+
 
   build-images:
     needs: determine-matrix
