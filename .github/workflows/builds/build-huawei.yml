@@ -1,0 +1,15 @@
+name: Build Huawei Image
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # Build ALL trigger
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Huawei Image
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4

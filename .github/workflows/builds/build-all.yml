@@ -1,0 +1,102 @@
+name: Build ALL Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_all_images:
+        description: 'Build all images'
+        required: true
+        default: 'true'
+      build_alicloud_image:
+        description: 'Build Alicloud image'
+        required: true
+        default: 'false'
+      build_aws_image:
+        description: 'Build AWS image'
+        required: true
+        default: 'false'
+      build_azure_image:
+        description: 'Build Azure image'
+        required: true
+        default: 'false'
+      build_digital_ocean_image:
+        description: 'Build Digital Ocean image'
+        required: true
+        default: 'false'
+      build_gcp_image:
+        description: 'Build GCP image'
+        required: true
+        default: 'false'
+      build_hetzner_image:
+        description: 'Build Hetzner image'
+        required: true
+        default: 'false'
+      build_huawei_image:
+        description: 'Build Huawei image'
+        required: true
+        default: 'false'
+      build_ibm_image:
+        description: 'Build IBM image'
+        required: true
+        default: 'false'
+      build_linode_image:
+        description: 'Build Linode image'
+        required: true
+        default: 'false'
+      build_oci_image:
+        description: 'Build Oracle Cloud image'
+        required: true
+        default: 'false'
+      build_ovh_image:
+        description: 'Build OVH image'
+        required: true
+        default: 'false'
+      build_tencent_image:
+        description: 'Build Tencent image'
+        required: true
+        default: 'false'
+      build_vultr_image:
+        description: 'Build Vultr image'
+        required: true
+        default: 'false'
+
+jobs:
+  determine-matrix:
+    runs-on: ubuntu-24.04
+    
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    
+      steps:
+      - name: Generate Build Matrix
+        id: set-matrix
+        run: |
+          MATRIX=$(jq -n '[
+            { name: "alicloud", path: "build-alicloud.yml", flag: "${{ github.event.inputs.build_alicloud_image }}" },
+            { name: "aws", path: "build-aws.yml", flag: "${{ github.event.inputs.build_aws_image }}" },
+            { name: "azure", path: "build-azure.yml", flag: "${{ github.event.inputs.build_azure_image }}" },
+            { name: "digital_ocean", path: "build-digital-ocean.yml", flag: "${{ github.event.inputs.build_digital_ocean_image }}" },
+            { name: "gcp", path: "build-gcp.yml", flag: "${{ github.event.inputs.build_gcp_image }}" },
+            { name: "hetzner", path: "build-hetzner.yml", flag: "${{ github.event.inputs.build_hetzner_image }}" },
+            { name: "huawei", path: "build-huawei.yml", flag: "${{ github.event.inputs.build_huawei_image }}" },
+            { name: "ibm", path: "build-ibm.yml", flag: "${{ github.event.inputs.build_ibm_image }}" },
+            { name: "linode", path: "build-linode.yml", flag: "${{ github.event.inputs.build_linode_image }}" },
+            { name: "oci", path: "build-oci.yml", flag: "${{ github.event.inputs.build_oci_image }}" },
+            { name: "ovh", path: "build-ovh.yml", flag: "${{ github.event.inputs.build_ovh_image }}" },
+            { name: "tencent", path: "build-tencent.yml", flag: "${{ github.event.inputs.build_tencent_image }}" },
+            { name: "vultr", path: "build-vultr.yml", flag: "${{ github.event.inputs.build_vultr_image }}" }
+          ] | map(select(.flag == "true" or "${{ github.event.inputs.build_all_images }}" == "true")) | map({name, path})')
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
+  build-images:
+    needs: determine-matrix
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix: ${{ fromJson(needs.determine-matrix.outputs.matrix) }}
+    
+      steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Image
+        uses: ./.github/workflows/builds/${{ matrix.path }}@main
