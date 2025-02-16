@@ -1,9 +1,6 @@
 name: Build Vultr Image
 
 on:
-  # Manual trigger
-  workflow_dispatch:
-  # Build ALL trigger
   workflow_dispatch:
 
 jobs:
