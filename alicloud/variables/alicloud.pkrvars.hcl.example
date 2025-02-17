@@ -1,5 +1,2 @@
-alicloud_access_key = "your-alicloud-access-key"
-alicloud_secret_key = "your-alicloud-secret-key"
-
 alicloud_region        = "eu-central-1"
 alicloud_instance_type = "ecs.g8y.xlarge"

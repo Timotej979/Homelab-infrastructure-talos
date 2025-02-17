@@ -1,8 +1,16 @@
 name: Build AliCloud Image
 
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
 on:
   workflow_call:
   workflow_dispatch:
+
+env:
+  HCP_CLI_VERSION: "0.8.0"
+  PACKER_VERSION: "1.12.0"
 
 jobs:
   build:
@@ -11,3 +19,70 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Configure HCP Credentials
+        uses: hashicorp/hcp-auth-action@v0.1.0
+        with:
+          workload_identity_provider: ${{ secrets.HCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Install HCP CLI
+        uses: hashicorp/hcp-setup-action@v0.1.0
+        with:
+          version: ${{ env.HCP_CLI_VERSION }}
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Configure AliCloud Credentials
+        id: alicloud-configure-credentials
+        uses: aliyun/configure-aliyun-credentials-action@v1.0.3
+        with:
+          role-to-assume: ${{ secrets.ALICLOUD_ROLE_TO_ASSUME }}
+          oidc-provider-arn: ${{ secrets.ALICLOUD_OIDC_PROVIDER_ARN }}
+
+      - name: Build Image
+        working-directory: ./alicloud/templates
+        run: |
+          # Define colors for logging
+          GREEN='\033[38;5;82m'   # Bright green
+          ORANGE='\033[38;5;208m' # Bright orange
+          RED='\033[38;5;196m'    # Bright red
+          RESET='\033[0m'         # Reset to default color
+
+          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
+          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
+          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
+          log_info() { printf "[INFO] %s\n" "$1"; }
+
+          # Configure AliCloud credentials
+          log_info "Configuring AliCloud credentials..."
+          export ALICLOUD_ACCESS_KEY_ID="${{ steps.alicloud-configure-credentials.outputs.aliyun-access-key-id }}" || {
+            log_error "Failed to set AliCloud Access Key ID!"
+            exit 1
+          }
+          export ALICLOUD_ACCESS_KEY_SECRET="${{ steps.alicloud-configure-credentials.outputs.aliyun-access-key-secret }}" || {
+            log_error "Failed to set AliCloud Access Key Secret!"
+            exit 1
+          }
+          export ALICLOUD_SECURITY_TOKEN="${{ steps.alicloud-configure-credentials.outputs.aliyun-security-token }}" || {
+            log_error "Failed to set AliCloud Security Token!"
+            exit 1
+          }
+          log_success "AliCloud credentials configured successfully."
+
+          # Run Packer
+          log_info "Initializing Packer build..."
+          packer init ./alicloud.pkr.hcl || {
+            log_error "Failed to initialize Packer build!"
+            exit 1
+          }
+          log_success "Packer build initialized successfully."
+
+          log_info "Starting Packer build..."
+          packer build ./alicloud.pkr.hcl || {
+            log_error "Failed to build AliCloud image!"
+            exit 1
+          }
+          log_success "AliCloud image built successfully."

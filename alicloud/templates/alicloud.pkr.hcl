@@ -12,18 +12,6 @@ packer {
 }
 
 #############################################
-variable "alicloud_access_key" {
-    description = "Alicloud Access Key"
-    type        = string
-    sensitive   = true
-}
-
-variable "alicloud_secret_key" {
-    description = "Alicloud Secret Key"
-    type        = string
-    sensitive   = true
-}
-
 variable "alicloud_region" {
     description = "Alicloud Region"
     type        = string
@@ -51,9 +39,7 @@ locals {
 
 #############################################
 source "alicloud-ecs" "talos" {
-    # The AliCloud credentials
-    access_key = var.alicloud_access_key
-    secret_key = var.alicloud_secret_key
+    # The AliCloud region
     region     = var.alicloud_region
 
     # The AliCloud server configuration
