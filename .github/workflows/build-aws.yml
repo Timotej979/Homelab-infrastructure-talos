@@ -36,6 +36,7 @@ jobs:
           version: ${{ env.PACKER_VERSION }}
 
       - name: Configure AWS Credentials for China region audience
+        id: aws-configure-credentials
         uses: aws-actions/configure-aws-credentials@v4.1.0
         with:
           audience: sts.amazonaws.com
@@ -55,6 +56,22 @@ jobs:
           log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
           log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
           log_info() { printf "[INFO] %s\n" "$1"; }
+
+          # Configure AWS credentials
+          log_info "Configuring AWS credentials..."
+          export AWS_ACCESS_KEY_ID="${{ steps.aws-configure-credentials.outputs.aws-access-key-id }}" || {
+            log_error "Failed to configure AWS credentials!"
+            exit 1
+          }
+          export AWS_SECRET_ACCESS_KEY = "${{ steps.aws-configure-credentials.outputs.aws-secret-access-key }}" || {
+            log_error "Failed to configure AWS credentials!"
+            exit 1
+          }
+          export AWS_SESSION_TOKEN = "${{ steps.aws-configure-credentials.outputs.aws-session-token }}" || {
+            log_error "Failed to configure AWS credentials!"
+            exit 1
+          }
+          log_success "AWS credentials configured successfully."
 
           # Run Packer
           log_info "Initializing Packer build..."

@@ -12,18 +12,6 @@ packer {
 }
 
 #############################################
-variable "gcp_project_id" {
-    description = "GCP Project ID"
-    type        = string
-    sensitive   = true
-}
-
-variable "gcp_access_token" {
-    description = "GCP Access Token"
-    type        = string
-    sensitive   = true
-}
-
 variable "gcp_zone" {
     description = "GCP Zone"
     type        = string
@@ -51,9 +39,7 @@ locals {
 
 #############################################
 source "googlecompute" "talos" {
-    # The GCP credentials
-    project_id    = var.gcp_project_id
-    access_token  = var.gcp_access_token
+    # The GCP zone
     zone          = var.gcp_zone
 
     # The GCP server configuration

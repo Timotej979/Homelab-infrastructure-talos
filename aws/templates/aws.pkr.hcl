@@ -50,9 +50,7 @@ data "amazon-ami" "ubuntu" {
 
 #############################################
 source "amazon-ebs" "talos" {
-    # The AWS Cloud credentials
-    access_key = var.aws_access_key
-    secret_key = var.aws_secret_key
+    # The AWS Cloud region
     region     = var.aws_region
 
     # The AWS Cloud server configuration

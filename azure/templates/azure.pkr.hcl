@@ -39,14 +39,11 @@ locals {
 
 #############################################
 source "azure-arm" "talos" {
-    # The Azure Cloud credentials
-    client_id       = var.azure_client_id
-    client_secret   = var.azure_client_secret
-    subscription_id = var.azure_subscription_id
-    tenant_id       = var.azure_tenant_id
+    # The Azure Cloud location
     location        = var.azure_region
 
     # # The Azure server configuration
+    storage_account       = "talos-storage"
     resource_group_name   = "talos-rg"
     os_type               = "Linux"
     image_publisher       = "Debian"

@@ -12,12 +12,6 @@ packer {
 }
 
 #############################################
-variable "hcloud_token" {
-    description = "The Hetzner Cloud API token"
-    type        = string
-    sensitive   = true
-}
-
 variable "server_type" {
     description = "The Hetzner Cloud server type to use"
     type        = string
@@ -50,13 +44,12 @@ locals {
 
 #############################################
 source "hcloud" "talos" {
-    # The Hetzner Cloud API token
-    token        = var.hcloud_token
+    # The Hetzner Cloud location
+    location = var.location
     
     # The Hetzner Cloud server configuration
     rescue       = "linux64"
     image        = "debian-11"
-    location     = var.location
     server_type  = var.server_type
     ssh_username = "root"
     

@@ -38,8 +38,7 @@ locals {
 
 #############################################
 source "digitalocean" "talos" {
-    # The DO Cloud credentials
-    api_token = var.do_token
+    # The DO Cloud region
     region    = var.do_region
 
     # The DO server configuration
@@ -49,13 +48,13 @@ source "digitalocean" "talos" {
 
     snapshot_name = "talos-${local.talos_version}-${local.talos_arch}"
 
-    snapshot_tags = {
-        platform  = "digitalocean"
-        os        = "talos"
-        version   = local.talos_version
-        arch      = local.talos_arch
-        timestamp = timestamp()
-    }
+    snapshot_tags = [
+        "digitalocean", 
+        "talos",
+        "${local.talos_version}",
+        "${local.talos_arch}",
+        "${timestamp()}"
+    ]
 }
 
 #############################################
