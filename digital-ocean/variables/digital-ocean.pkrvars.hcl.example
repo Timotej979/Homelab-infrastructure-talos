@@ -1,4 +1,2 @@
-do_token = "your-do-token"
-
 do_region       = "fra1"
 do_droplet_size = "s-4vcpu-8gb"

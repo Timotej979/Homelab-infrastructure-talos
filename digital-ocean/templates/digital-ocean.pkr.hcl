@@ -12,12 +12,6 @@ packer {
 }
 
 #############################################
-variable "do_token" {
-    description = "Digital Ocean Token"
-    type        = string
-    sensitive   = true
-}
-
 variable "do_region" {
     description = "Digital Ocean Region"
     type        = string
