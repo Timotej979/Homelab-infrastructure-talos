@@ -58,7 +58,6 @@
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-linode.yml/badge.svg?branch=main" alt="Build Linode">
       </a>
     </p>
-
     <p align="center">
       <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml">
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml/badge.svg?branch=main" alt="Build Digital Ocean">
@@ -70,7 +69,6 @@
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ibm.yml/badge.svg?branch=main" alt="Build IBM">
       </a>
     </p>
-
     <p align="center">
       <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml">
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml/badge.svg?branch=main" alt="Build Oracle Cloud">
