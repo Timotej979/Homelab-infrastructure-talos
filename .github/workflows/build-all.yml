@@ -40,43 +40,57 @@ jobs:
 
           # Convert excluded images to an array
           log_info "Parsing excluded images..."
-          IFS=',' read -ra EXCLUDED <<< "${{ github.event.inputs.exclude_images || '' }}" || {
-            log_error "Failed to parse excluded images!"
-            exit 1
-          }
-          log_success "Successfully parsed excluded images."
-          
+          EXCLUDED_IMAGES="${{ github.event.inputs.exclude_images }}"  # Read input
+
+          # If EXCLUDED_IMAGES is empty or unset, initialize an empty array
+          if [[ -z "$EXCLUDED_IMAGES" ]]; then
+            log_warning "No images excluded, setting empty list."
+            EXCLUDED=()
+          else
+            IFS=',' read -ra EXCLUDED <<< "$EXCLUDED_IMAGES"
+          fi
+          log_success "Successfully parsed excluded images: ${EXCLUDED[@]}"
+
           # Define all possible cloud images
           log_info "Defining all possible cloud images..."
-          ALL_IMAGES='[ \
-            { "name": "alicloud", "path": "build-alicloud.yml" }, \
-            { "name": "aws", "path": "build-aws.yml" }, \
-            { "name": "azure", "path": "build-azure.yml" }, \
-            { "name": "digital_ocean", "path": "build-digital-ocean.yml" }, \
-            { "name": "gcp", "path": "build-gcp.yml" }, \
-            { "name": "hetzner", "path": "build-hetzner.yml" }, \
-            { "name": "huawei", "path": "build-huawei.yml" }, \
-            { "name": "ibm", "path": "build-ibm.yml" }, \
-            { "name": "linode", "path": "build-linode.yml" }, \
-            { "name": "oci", "path": "build-oci.yml" }, \
-            { "name": "ovh", "path": "build-ovh.yml" }, \
-            { "name": "tencent", "path": "build-tencent.yml" }, \
-            { "name": "vultr", "path": "build-vultr.yml" } ]' || 
-          {
-            log_error "Failed to define all possible cloud images!"
-            exit 1
-          }
+          ALL_IMAGES='[
+            { "name": "alicloud", "path": "build-alicloud.yml" },
+            { "name": "aws", "path": "build-aws.yml" },
+            { "name": "azure", "path": "build-azure.yml" },
+            { "name": "digital_ocean", "path": "build-digital-ocean.yml" },
+            { "name": "gcp", "path": "build-gcp.yml" },
+            { "name": "hetzner", "path": "build-hetzner.yml" },
+            { "name": "huawei", "path": "build-huawei.yml" },
+            { "name": "ibm", "path": "build-ibm.yml" },
+            { "name": "linode", "path": "build-linode.yml" },
+            { "name": "oci", "path": "build-oci.yml" },
+            { "name": "ovh", "path": "build-ovh.yml" },
+            { "name": "tencent", "path": "build-tencent.yml" },
+            { "name": "vultr", "path": "build-vultr.yml" }
+          ]'
           log_success "Successfully defined all possible cloud images."
 
-          # Create a filtered build matrix
+          # Convert EXCLUDED array to JSON
+          log_info "Converting excluded images to JSON format..."
+          if [[ ${#EXCLUDED[@]} -eq 0 ]]; then
+            EXCLUDED_JSON='[]'
+          else
+            EXCLUDED_JSON=$(printf '%s\n' "${EXCLUDED[@]}" | jq -R . | jq -s .) || {
+              log_error "Failed to convert excluded images to JSON!"
+              exit 1
+            }
+          fi
+          log_success "Successfully converted excluded images: $EXCLUDED_JSON"
+
+          # Filter the build matrix
           log_info "Filtering build matrix..."
-          MATRIX=$(echo "$ALL_IMAGES" | jq --argjson excluded "$(printf '%s\n' "${EXCLUDED[@]}" | jq -R . | jq -s .)" '
+          MATRIX=$(echo "$ALL_IMAGES" | jq --argjson excluded "$EXCLUDED_JSON" '
             map(select(.name as $name | $excluded | index($name) | not))
           ') || {
             log_error "Failed to filter build matrix!"
             exit 1
           }
-          log_success "Successfully filtered build matrix."
+          log_success "Successfully filtered build matrix: $MATRIX"
 
           # Ensure matrix is not empty
           log_info "Checking if build matrix is empty..."
