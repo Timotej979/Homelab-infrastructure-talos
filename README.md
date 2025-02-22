@@ -4,84 +4,86 @@
   <img src="./docs/assets/talos-logo.png" style="height: 250px; width: auto;">
 </div>
 
-<p align="center"></p>
 
 
-<h2 align="center">SECURITY SCAN PIPELINES</h2>
+<pre>
+  <h2 align="center">SECURITY SCAN PIPELINES</h2>
 
-<p align="center">
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml/badge.svg?branch=main" alt="CVE Repository Scan">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/cve-repository-scan.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/cve-repository-scan.yml/badge.svg?branch=main" alt="Shellcheck TalosOS Script">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/packer-validate-syntax.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/packer-validate-syntax.yml/badge.svg?branch=main" alt="Packer Validate Syntax">
-  </a>
-</p>
+  <p align="center">
+    <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml">
+      <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml/badge.svg?branch=main" alt="CVE Repository Scan">
+    </a>
+    <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/cve-repository-scan.yml">
+      <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/cve-repository-scan.yml/badge.svg?branch=main" alt="Shellcheck TalosOS Script">
+    </a>
+    <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/packer-validate-syntax.yml">
+      <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/packer-validate-syntax.yml/badge.svg?branch=main" alt="Packer Validate Syntax">
+    </a>
+  </p>
+</pre>
 
-<p align="center"></p>
+<pre>
+  <h2 align="center">BUILD CLOUD PROVIDER IMAGE PIPELINES</h2>
+
+  <pre>
+    <p align="center">
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-alicloud.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-alicloud.yml/badge.svg?branch=main" alt="Build AliCloud">
+      </a>
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-gcp.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-gcp.yml/badge.svg?branch=main" alt="Build GCP">
+      </a>
+    </p>
+
+    <p align="center">
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-aws.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-aws.yml/badge.svg?branch=main" alt="Build AWS">
+      </a>
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-azure.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-azure.yml/badge.svg?branch=main" alt="Build Azure">
+      </a>
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencent.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencet.yml/badge.svg?branch=main" alt="Build Tencent">
+      </a>
+    </p>
+  </pre>
 
 
-<h2 align="center">BUILD CLOUD PROVIDER IMAGE PIPELINES</h2>
+  <pre>
+    <p align="center">
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml/badge.svg?branch=main" alt="Build Hetzner">
+      </a>
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-linode.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-linode.yml/badge.svg?branch=main" alt="Build Linode">
+      </a>
+    </p>
 
-<p align="center">
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-alicloud.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-alicloud.yml/badge.svg?branch=main" alt="Build AliCloud">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-gcp.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-gcp.yml/badge.svg?branch=main" alt="Build GCP">
-  </a>
-</p>
+    <p align="center">
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml/badge.svg?branch=main" alt="Build Digital Ocean">
+      </a>
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-huawei.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-huawei.yml/badge.svg?branch=main" alt="Build Huawei">
+      </a>
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ibm.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ibm.yml/badge.svg?branch=main" alt="Build IBM">
+      </a>
+    </p>
 
-<p align="center">
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-aws.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-aws.yml/badge.svg?branch=main" alt="Build AWS">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-azure.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-azure.yml/badge.svg?branch=main" alt="Build Azure">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencent.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencet.yml/badge.svg?branch=main" alt="Build Tencent">
-  </a>
-</p>
-
-<p align="center"></p>
-
-
-<p align="center">
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml/badge.svg?branch=main" alt="Build Hetzner">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-linode.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-linode.yml/badge.svg?branch=main" alt="Build Linode">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml/badge.svg?branch=main" alt="Build Digital Ocean">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-huawei.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-huawei.yml/badge.svg?branch=main" alt="Build Huawei">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ibm.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ibm.yml/badge.svg?branch=main" alt="Build IBM">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml/badge.svg?branch=main" alt="Build Oracle Cloud">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ovh.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ovh.yml/badge.svg?branch=main" alt="Build OVH">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-vultr.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-vultr.yml/badge.svg?branch=main" alt="Build Vultr">
-  </a>
-</p>
+    <p align="center">
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml/badge.svg?branch=main" alt="Build Oracle Cloud">
+      </a>
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ovh.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ovh.yml/badge.svg?branch=main" alt="Build OVH">
+      </a>
+      <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-vultr.yml">
+        <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-vultr.yml/badge.svg?branch=main" alt="Build Vultr">
+      </a>
+    </p>
+  </pre>
+</pre>
 
 ---
 
