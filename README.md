@@ -42,7 +42,7 @@
     <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-azure.yml/badge.svg?branch=main" alt="Build Azure">
   </a>
   <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencent.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencet.yml/badge.svg?branch=main" alt="Build Tencent">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencent.yml/badge.svg?branch=main" alt="Build Tencent">
   </a>
 </p>
 
