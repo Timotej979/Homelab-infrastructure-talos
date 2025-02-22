@@ -34,7 +34,6 @@
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-gcp.yml/badge.svg?branch=main" alt="Build GCP">
       </a>
     </p>
-
     <p align="center">
       <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-aws.yml">
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-aws.yml/badge.svg?branch=main" alt="Build AWS">
