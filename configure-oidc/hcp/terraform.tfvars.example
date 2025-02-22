@@ -1,0 +1,5 @@
+hcp_client_id     = "your-client-id"
+hcp_client_secret = "your-client-secret"
+hcp_project_id    = "your-project-id"
+
+oidc_providers_config = 

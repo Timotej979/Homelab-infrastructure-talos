@@ -6,6 +6,8 @@
 
 ---
 
+<h2 align="center">SECURITY SCAN PIPELINES</h2>
+
 <p align="center">
   <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml">
     <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/shellcheck-install-scripts.yml/badge.svg?branch=main" alt="CVE Repository Scan">
@@ -18,6 +20,65 @@
   </a>
 </p>
 
+---
+
+<h2 align="center">BUILD CLOUD PROVIDER PIPELINES</h2>
+
+<p align="center">
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-alicloud.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-alicloud.yml/badge.svg?branch=main" alt="Build AliCloud">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-gcp.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-gcp.yml/badge.svg?branch=main" alt="Build GCP">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-aws.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-aws.yml/badge.svg?branch=main" alt="Build AWS">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-azure.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-azure.yml/badge.svg?branch=main" alt="Build Azure">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencent.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencet.yml/badge.svg?branch=main" alt="Build Tencent">
+  </a>
+</p>
+
+---
+
+<p align="center">
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml/badge.svg?branch=main" alt="Build Hetzner">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-linode.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-linode.yml/badge.svg?branch=main" alt="Build Linode">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml/badge.svg?branch=main" alt="Build Digital Ocean">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-huawei.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-huawei.yml/badge.svg?branch=main" alt="Build Huawei">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ibm.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ibm.yml/badge.svg?branch=main" alt="Build IBM">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml/badge.svg?branch=main" alt="Build Oracle Cloud">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ovh.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ovh.yml/badge.svg?branch=main" alt="Build OVH">
+  </a>
+  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-vultr.yml">
+    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-vultr.yml/badge.svg?branch=main" alt="Build Vultr">
+  </a>
+</p>
 
 ---
 
@@ -43,6 +104,34 @@ Requirements for using the automatic build pipeline comprising of install-script
 
 - Release processes:
   - Github Actions ([Link](https://github.com/features/actions))
+
+
+## Initial setup
+
+This repository uses a security best-practice CI/CD pipeline by utilizing OIDC temporary credentials to authenticate with platforms that support it. To set up the OIDC providers for the platforms that support them follow the instructions below:
+
+1. Go to the configure-oidc directory, select the desired platform for which you want to set up OIDC and configure the terraform variables that are required to create the underlying infrastructure for the platform.
+
+```bash
+# Select the desired platform
+cd configure-oidc/<platform_name>
+
+# Copy the terraform.tfvars.example file to terraform.tfvars
+cp terraform.tfvars.example terraform.tfvars
+
+# Edit the terraform.tfvars file with your desired editor
+vim terraform.tfvars
+nano terraform.tfvars
+code terraform.tfvars
+```
+
+OIDC providers are currently supported for the following platforms:
+- [x] HCP (HashiCorp Cloud Platform for Packer authentication) [REQUIRED]
+- [] AWS (Amazon Web Services for Packer authentication) [OPTIONAL]
+- [] Azure (Microsoft Azure for Packer authentication) [OPTIONAL]
+- [] GCP (Google Cloud Platform for Packer authentication) [OPTIONAL]
+
+
 
 
 ## Usage
