@@ -40,7 +40,7 @@ jobs:
 
           # Convert excluded images to an array
           log_info "Parsing excluded images..."
-          IFS=',' read -ra EXCLUDED <<< "${{ github.event.inputs.exclude_images }}" || {
+          IFS=',' read -ra EXCLUDED <<< "${{ github.event.inputs.exclude_images || '' }}" || {
             log_error "Failed to parse excluded images!"
             exit 1
           }
