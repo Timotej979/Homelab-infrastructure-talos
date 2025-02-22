@@ -4,7 +4,8 @@
   <img src="./docs/assets/talos-logo.png" style="height: 250px; width: auto;">
 </div>
 
----
+<p align="center"></p>
+
 
 <h2 align="center">SECURITY SCAN PIPELINES</h2>
 
@@ -20,9 +21,10 @@
   </a>
 </p>
 
----
+<p align="center"></p>
 
-<h2 align="center">BUILD CLOUD PROVIDER PIPELINES</h2>
+
+<h2 align="center">BUILD CLOUD PROVIDER IMAGE PIPELINES</h2>
 
 <p align="center">
   <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-alicloud.yml">
@@ -45,7 +47,8 @@
   </a>
 </p>
 
----
+<p align="center"></p>
+
 
 <p align="center">
   <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml">
@@ -127,9 +130,9 @@ code terraform.tfvars
 
 OIDC providers are currently supported for the following platforms:
 - [x] HCP (HashiCorp Cloud Platform for Packer authentication) [REQUIRED]
-- [] AWS (Amazon Web Services for Packer authentication) [OPTIONAL]
-- [] Azure (Microsoft Azure for Packer authentication) [OPTIONAL]
-- [] GCP (Google Cloud Platform for Packer authentication) [OPTIONAL]
+- [x] AWS (Amazon Web Services for Packer authentication) [OPTIONAL]
+- [x] Azure (Microsoft Azure for Packer authentication) [OPTIONAL]
+- [x] GCP (Google Cloud Platform for Packer authentication) [OPTIONAL]
 
 
 
