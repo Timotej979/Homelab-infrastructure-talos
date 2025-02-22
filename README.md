@@ -6,7 +6,7 @@
 
 
 
-<pre>
+<div align="center">
   <h2 align="center">SECURITY SCAN PIPELINES</h2>
 
   <p align="center">
@@ -20,12 +20,12 @@
       <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/packer-validate-syntax.yml/badge.svg?branch=main" alt="Packer Validate Syntax">
     </a>
   </p>
-</pre>
+</div>
 
-<pre>
-  <h2 align="center">BUILD CLOUD PROVIDER IMAGE PIPELINES</h2>
+<div align="center">
+  <h2 align="center">RELEASE PIPELINES</h2>
 
-  <pre>
+  <div align="center">
     <p align="center">
       <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-alicloud.yml">
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-alicloud.yml/badge.svg?branch=main" alt="Build AliCloud">
@@ -46,10 +46,10 @@
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-tencet.yml/badge.svg?branch=main" alt="Build Tencent">
       </a>
     </p>
-  </pre>
+  </div>
 
 
-  <pre>
+  <div align="center">
     <p align="center">
       <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml">
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml/badge.svg?branch=main" alt="Build Hetzner">
@@ -82,8 +82,8 @@
         <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-vultr.yml/badge.svg?branch=main" alt="Build Vultr">
       </a>
     </p>
-  </pre>
-</pre>
+  </div>
+</div>
 
 ---
 
