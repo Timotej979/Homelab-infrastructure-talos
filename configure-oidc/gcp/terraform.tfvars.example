@@ -26,8 +26,10 @@ oidc_providers_config = {
         ]
     }
     terragrunt = {
-        name             = "terragrunt-gh-actions"
-        repository_claim = "Timotej979/Homelab-infrastructure-terragrunt"
-        ref_claim        = "refs/heads/main"
+        name                = "terragrunt-gh-actions"
+        actor_claim         = "Timotej979"
+        repository_claim    = "Timotej979/Homelab-infrastructure-terragrunt"
+        ref_claim           = "refs/heads/main"
+        workflow_ref_claims = []
     }
 }

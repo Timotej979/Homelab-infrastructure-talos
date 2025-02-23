@@ -1,8 +1,16 @@
 name: Build Vultr Image
 
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
 on:
   workflow_call:
   workflow_dispatch:
+
+env:
+  HCP_CLI_VERSION: "0.8.0"
+  PACKER_VERSION: "1.12.0"
 
 jobs:
   build:
@@ -11,3 +19,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Configure HCP Credentials
+        uses: hashicorp/hcp-auth-action@v0.1.0
+        with:
+          workload_identity_provider: ${{ secrets.HCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Install HCP CLI
+        uses: hashicorp/hcp-setup-action@v0.1.0
+        with:
+          version: ${{ env.HCP_CLI_VERSION }}
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
