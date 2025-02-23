@@ -18,5 +18,12 @@ resource "hcp_iam_workload_identity_provider" "github_wip" {
         issuer_uri = "https://token.actions.githubusercontent.com"
     }
 
-    conditional_access = "jwt_claims.repository == \"${each.value.repository_claim}\" and jwt_claims.ref == \"${each.value.ref_claim}\""
+    conditional_access = <<EOT
+        jwt.actor == "${each.value.actor_claim}" and
+        jwt_claims.repository == "${each.value.repository_claim}" and
+        jwt_claims.ref == "${each.value.ref_claim}" and
+        jwt_claims.workflow_ref in [
+            ${join(", ", [for ref in each.value.workflow_ref_claims : "\"${ref}\""])}
+        ]
+    EOT
 }

@@ -1,6 +1,6 @@
-hcp_client_id     = "your-client-id"
-hcp_client_secret = "your-client-secret"
-hcp_project_id    = "your-project-id"
+gcp_credentials_file_path = "your-credentials-file-path"
+gcp_project_id            = "your-project-id"
+gcp_region                = "your-gcp-region"
 
 oidc_providers_config = {
     packer = {
