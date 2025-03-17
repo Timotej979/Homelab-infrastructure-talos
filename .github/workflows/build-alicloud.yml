@@ -37,7 +37,7 @@ jobs:
 
       - name: Configure AliCloud Credentials
         id: alicloud-configure-credentials
-        uses: aliyun/configure-aliyun-credentials-action@v1.0.4
+        uses: aliyun/configure-aliyun-credentials-action@v1.0.6
         with:
           role-to-assume: ${{ secrets.ALICLOUD_ROLE_TO_ASSUME }}
           oidc-provider-arn: ${{ secrets.ALICLOUD_OIDC_PROVIDER_ARN }}
