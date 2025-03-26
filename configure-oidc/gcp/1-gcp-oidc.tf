@@ -29,10 +29,10 @@ resource "google_iam_workload_identity_pool_provider" "github_actions_provider" 
 
     attribute_mapping = {
         "google.subject"         = "assertion.sub"
-        "attribute.actor"        = "assertion.actor"
-        "attribute.aud"          = "assertion.aud"
-        "attribute.repository"   = "assertion.repository"
-        "attribute.ref"          = "assertion.ref"
-        "attribute.workflow_ref" = "assertion.workflow_ref"
+        "assertion.actor"        = "assertion.actor"
+        "assertion.aud"          = "assertion.aud"
+        "assertion.repository"   = "assertion.repository"
+        "assertion.ref"          = "assertion.ref"
+        "assertion.workflow_ref" = "assertion.workflow_ref"
     }
 }
