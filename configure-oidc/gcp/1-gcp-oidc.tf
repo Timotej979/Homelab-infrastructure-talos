@@ -19,8 +19,8 @@ resource "google_iam_workload_identity_pool_provider" "github_actions_provider" 
     }
 
     attribute_condition = <<EOT
-        attribute.actor == "${each.value.actor_claim}" &&
-        attribute.repository == "${each.value.repository_claim}" &&
+        assertion.actor == "${each.value.actor_claim}" &&
+        assertion.repository == "${each.value.repository_claim}" &&
         assertion.ref == "${each.value.ref_claim}" &&
         assertion.workflow_ref in [
             ${join(", ", [for ref in each.value.workflow_ref_claims : "\"${ref}\""])}
@@ -28,11 +28,11 @@ resource "google_iam_workload_identity_pool_provider" "github_actions_provider" 
     EOT
 
     attribute_mapping = {
-        "google.subject"       = "assertion.sub"
-        "attribute.actor"      = "assertion.actor"
-        "attribute.aud"        = "assertion.aud"
-        "attribute.repository" = "assertion.repository"
-        "attribute.ref"        = "assertion.ref"
+        "google.subject"         = "assertion.sub"
+        "attribute.actor"        = "assertion.actor"
+        "attribute.aud"          = "assertion.aud"
+        "attribute.repository"   = "assertion.repository"
+        "attribute.ref"          = "assertion.ref"
         "attribute.workflow_ref" = "assertion.workflow_ref"
     }
 }
