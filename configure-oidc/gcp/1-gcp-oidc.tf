@@ -19,11 +19,11 @@ resource "google_iam_workload_identity_pool_provider" "github_actions_provider" 
     }
 
     attribute_condition = <<EOT
-        assertion.actor == "${each.value.actor_claim}" &&
-        assertion.repository == "${each.value.repository_claim}" &&
-        assertion.ref == "${each.value.ref_claim}" &&
+        assertion.actor == "${try(each.value.actor_claim, "Timotej979")}" &&
+        assertion.repository == "${try(each.value.repository_claim, "Timotej979/Homelab-infrastructure-talos")}" &&
+        assertion.ref == "${try(each.value.ref_claim, "refs/heads/main")}" &&
         assertion.workflow_ref in [
-            ${join(", ", [for ref in each.value.workflow_ref_claims : "\"${ref}\""])}
+            ${join(", ", [for ref in each.value.workflow_ref_claims : "\"${try(ref, "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-gcp.yml@refs/heads/main")}\""])}
         ]
     EOT
 

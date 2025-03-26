@@ -2,7 +2,7 @@ hcp_client_id     = "your-client-id"
 hcp_client_secret = "your-client-secret"
 hcp_project_id    = "your-project-id"
 
-oidc_providers_config = {
+workload_identity_providers_config = {
     packer = {
         name                = "packer-gh-actions"
         actor_claim         = "Timotej979"
