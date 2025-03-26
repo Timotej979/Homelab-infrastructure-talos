@@ -1,17 +1,4 @@
-variable "gcp_credentials_file_path" {
-    description = "The path to the GCP credentials file"
-    type        = string
-}
 
-variable "gcp_project_id" {
-    description = "The GCP project ID"
-    type        = string
-}
-
-variable "gcp_region" {
-    description = "The GCP region"
-    type        = string
-}
 
 variable "workload_identity_providers_config" {
     description = "The OIDC providers configuration to create various workload identity providers for different GitHub repositories"

@@ -134,14 +134,12 @@ jobs:
                 log_success "Validation passed for $file"
               fi
           done
-
           log_success "Packer Validate commands completed successfully!"
 
           # Close SARIF JSON structure properly
           log_info "Closing Packer Validate SARIF file..."
           sed -i '$ s/,$//' packer-results.sarif
           echo "] }] }" >> packer-results.sarif
-
           log_success "Packer Validate SARIF file created successfully!"
 
       - name: Create a Packer Validate SARIF artifact
