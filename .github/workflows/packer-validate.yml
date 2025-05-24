@@ -5,9 +5,9 @@ permissions:
 
 on:
   push:
-    branches: [main]
+    branches: [main, stage, dev]
   pull_request:
-    branches: [main]
+    branches: [main, stage, dev]
 
 env:
   PACKER_VERSION: "1.12.0"
