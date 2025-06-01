@@ -26,6 +26,7 @@ resource "google_iam_workload_identity_pool_provider" "github_actions_provider" 
     EOT
 
     attribute_mapping = {
+        "google.subject"         = "assertion.sub"
         "assertion.actor"        = "assertion.actor"
         "assertion.repository"   = "assertion.repository"
         "assertion.ref"          = "assertion.ref"
