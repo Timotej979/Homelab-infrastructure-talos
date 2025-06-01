@@ -22,7 +22,7 @@ resource "google_iam_workload_identity_pool_provider" "github_actions_provider" 
         assertion.actor == "${each.value.actor_claim}" &&
         assertion.repository == "${each.value.repository_claim}" &&
         assertion.ref == "${each.value.ref_claim}" &&
-        assertion.workflow_ref == "${each.value.workflow_ref_claim}"
+        assertion.workflow_ref in ["${join("\", \"", each.value.workflow_ref_claims)}"]
     EOT
 
     attribute_mapping = {
