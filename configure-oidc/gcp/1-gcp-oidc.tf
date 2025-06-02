@@ -7,18 +7,18 @@ resource "google_iam_workload_identity_pool" "github_actions" {
 
 resource "google_iam_workload_identity_pool_provider" "github_actions_provider" {
     for_each = {
-    for k, config in var.workload_identity_providers_config :
-    k => {
-      for workflow_ref in config.workflow_ref_claims :
-      "${k}-${basename(workflow_ref)}" => {
-        name             = config.name
-        actor_claim      = config.actor_claim
-        repository_claim = config.repository_claim
-        ref_claim        = config.ref_claim
-        workflow_file    = split("/", split("@", workflow_ref)[0])[3]  # Extract just "build-gcp.yml"
-      }
+        for k, config in var.workload_identity_providers_config :
+            k => {
+                for workflow_ref in config.workflow_ref_claims :
+                    "${k}-${basename(workflow_ref)}" => {
+                        name             = config.name
+                        actor_claim      = config.actor_claim
+                        repository_claim = config.repository_claim
+                        ref_claim        = config.ref_claim
+                        workflow_file    = split("/", split("@", workflow_ref)[0])[3]  # Extract just "build-gcp.yml"
+                    }
+            }   
     }
-  }
 
     workload_identity_pool_provider_id = "${each.value.name}-wip"
     workload_identity_pool_id          =  google_iam_workload_identity_pool.github_actions.workload_identity_pool_id
