@@ -31,12 +31,11 @@ resource "google_iam_workload_identity_pool_provider" "github_actions_provider" 
     }
 
     attribute_condition = <<EOT
-        assertion.sub == "repo:${each.value.repository_claim}:ref:${each.value.ref_claim}:workflow:${each.value.workflow_file}" &&
         assertion.actor == "${each.value.actor_claim}" &&
         assertion.repository == "${each.value.repository_claim}" &&
-        assertion.ref == "${each.value.ref_claim}"
+        assertion.ref == "${each.value.ref_claim}" &&
+        sub.startsWith("repo:${each.value.repository_claim}:ref:${each.value.ref_claim}:workflow:${each.value.workflow_file}")
     EOT
-
 
     attribute_mapping = {
         "google.subject"       = "assertion.sub"
