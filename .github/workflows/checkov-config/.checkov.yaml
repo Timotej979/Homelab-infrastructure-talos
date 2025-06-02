@@ -1,5 +1,0 @@
-skip:
-  - id: CKV_GCP_125
-    suppress_comment: "OIDC trust policy is dynamically validated and secured"
-    files:
-      - configure-oidc/gcp/1-gcp-oidc.tf
