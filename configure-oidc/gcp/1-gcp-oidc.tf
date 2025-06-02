@@ -5,7 +5,7 @@ resource "google_iam_workload_identity_pool" "github_actions" {
     disabled                  = false
 }
 
-# checkov:skip=CKV_GCP_125: GitHub OIDC tokens do not provide a separate workflow claim. Validation is done via 'sub'.
+# checkov:skip=CKV_GCP_125 reason: dynamic sub claims are used in a secure way
 resource "google_iam_workload_identity_pool_provider" "github_actions_provider" {
     for_each = {
         for k, config in var.workload_identity_providers_config : k => {
