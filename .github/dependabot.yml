@@ -5,7 +5,17 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore(github-actions-deps)"
     labels:
       - "dependencies"
       - "github-actions"
+
+  - package-ecosystem: "terraform"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(terraform-deps)"
+    labels:
+      - "dependencies"
+      - "terraform"
