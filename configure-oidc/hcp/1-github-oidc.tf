@@ -2,7 +2,7 @@
 resource "hcp_service_principal" "oidc_deployment_sp" {
     for_each = var.workload_identity_providers_config
 
-    name = "${each.value.name}"
+    name = each.value.name
     parent = "projects/${var.hcp_project_id}"
 }
 
