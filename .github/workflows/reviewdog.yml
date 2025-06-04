@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  checks: write
 
 jobs:
   typo-check:
@@ -21,6 +22,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           filter_mode: diff_context
+          comment_type: markdown
 
   markdownlint-check:
     runs-on: ubuntu-24.04
@@ -32,6 +34,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           filter_mode: diff_context
+          comment_type: markdown
 
   gitleaks-scan:
     runs-on: ubuntu-24.04
@@ -43,6 +46,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           filter_mode: diff_context
+          comment_type: markdown
 
   detect-secrets-scan:
     runs-on: ubuntu-24.04
@@ -54,6 +58,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           filter_mode: diff_context
+          comment_type: markdown
 
   shfmt:
     runs-on: ubuntu-24.04
@@ -66,6 +71,7 @@ jobs:
           shfmt_flags: "-i 4 -ci"
           reporter: github-pr-review
           filter_mode: diff_context
+          comment_type: markdown
 
   shellcheck:
     runs-on: ubuntu-24.04
@@ -77,6 +83,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           filter_mode: diff_context
+          comment_type: markdown
 
   tflint:
     runs-on: ubuntu-24.04
@@ -89,6 +96,7 @@ jobs:
           tflint_rulesets: "aws azurerm google"
           reporter: github-pr-review
           filter_mode: diff_context
+          comment_type: markdown
 
   terraform-validate:
     runs-on: ubuntu-24.04
@@ -105,6 +113,7 @@ jobs:
           workdir: configure-oidc/${{ matrix.provider }}
           reporter: github-pr-review
           filter_mode: diff_context
+          comment_type: markdown
 
   tfsec-scan:
     runs-on: ubuntu-24.04
@@ -116,3 +125,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           filter_mode: diff_context
+          comment_type: markdown
