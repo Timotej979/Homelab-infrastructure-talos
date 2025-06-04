@@ -1,0 +1,107 @@
+name: Reviewdog Code Review
+
+on:
+  pull_request:
+    branches: [main, stage, dev]
+  push:
+    branches: [main, stage, dev]
+
+permissions:
+  contents: write
+
+jobs:
+  typo-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Typo check
+        uses: reviewdog/action-typos@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  markdownlint-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Markdown lint check
+        uses: reviewdog/action-markdownlint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  gitleaks-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Gitleaks secret scan
+        uses: reviewdog/action-gitleaks@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  detect-secrets-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Detect secrets scan
+        uses: reviewdog/action-detect-secrets@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  depup-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Depup dependency update check
+        uses: reviewdog/action-depup/with-pr@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  shfmt:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run shfmt via reviewdog
+        uses: reviewdog/action-shfmt@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          shfmt_flags: "-i 4 -ci"
+
+  shellcheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Shellcheck
+        uses: reviewdog/action-shellcheck@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  tflint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: TFLint
+        uses: reviewdog/action-tflint@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tflint_rulesets: "aws azurerm google"
+
+  terraform-validate:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        provider: [aws, azure, gcp]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Terraform validate for ${{ matrix.provider }}
+        uses: reviewdog/action-terraform-validate@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workdir: configure-oidc/${{ matrix.provider }}
+
+  tfsec-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: TFSec security scanner
+        uses: reviewdog/action-tfsec@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}

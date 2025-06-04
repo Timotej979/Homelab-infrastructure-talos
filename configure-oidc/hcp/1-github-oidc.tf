@@ -14,7 +14,7 @@ resource "hcp_iam_workload_identity_provider" "github_wip" {
     service_principal = hcp_service_principal.oidc_deployment_sp[each.key].resource_name
     description       = "Allow GitHub Actions from ${each.value.repository_claim} repository on ${each.value.ref_claim} branch to authenticate with HCP"
 
-    oidc {
+    oidc = {
         issuer_uri = "https://token.actions.githubusercontent.com"
     }
 
