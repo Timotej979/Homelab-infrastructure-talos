@@ -12,188 +12,131 @@ permissions:
   checks: write
 
 jobs:
-  # PR Review
-  pr-review:
-    name: PR Review
+  typo-check:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Typo Check (PR Review)
-        uses: reviewdog/action-typos@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          typos_flags: '--config .github/workflows/typos-config/typos.toml'
-          reporter: github-pr-review
-          filter_mode: diff_context
-
-      - name: Markdown Lint (PR Review)
-        uses: reviewdog/action-markdownlint@v0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          filter_mode: diff_context
-          markdownlint_flags: '. --config .github/workflows/markdownlint-config/markdownlint.txt'
-
-      - name: Gitleaks Scan (PR Review)
-        uses: reviewdog/action-gitleaks@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          filter_mode: diff_context
-      
-      - name: Detect Secrets (PR Review)
-        uses: reviewdog/action-detect-secrets@v0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          detect_secrets_flags: '--exclude-files .git/*'
-          reporter: github-pr-review
-          filter_mode: diff_context
-
-      - name: GitHub Actions Lint (PR Review)
-        uses: reviewdog/action-actionlint@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          filter_mode: diff_context
-
-      - name: shfmt (PR Review)
-        uses: reviewdog/action-shfmt@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          shfmt_flags: "-i 4 -ci"
-          filter_mode: diff_context
-
-      - name: ShellCheck (PR Review)
-        uses: reviewdog/action-shellcheck@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          filter_mode: diff_context
-
-      - name: TFLint (PR Review)
-        uses: reviewdog/action-tflint@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tflint_rulesets: "aws azurerm google"
-          reporter: github-pr-review
-          filter_mode: diff_context
-
-      - name: TFSec Scan (PR Review)
-        uses: reviewdog/action-tfsec@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-pr-review
-          filter_mode: diff_context
-  
-  # PR Review Matrix
-  pr-review-matrix:
-    name: PR Review Matrix
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        provider: [aws, azure, gcp]
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Terraform Validate ${{ matrix.provider }} (PR Review)
-        uses: reviewdog/action-terraform-validate@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          terraform_version: 1.12.0
-          workdir: terraform/${{ matrix.provider }}
-          reporter: github-pr-review
-          filter_mode: diff_context
-
-  # Checks Tab
-  checks-tab:
-    name: Checks Tab
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Typo Check (Checks Tab)
+      - name: Typos
         uses: reviewdog/action-typos@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           typos_flags: '--config .github/workflows/typos-config/typos.toml'
           reporter: github-check
-          filter_mode: nofilter
+          filter_mode: diff_context
 
-      - name: Markdown Lint (Checks Tab)
+  markdownlint-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Markdownlint
         uses: reviewdog/action-markdownlint@v0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
-          filter_mode: nofilter
+          filter_mode: diff_context
           markdownlint_flags: '. --config .github/workflows/markdownlint-config/markdownlint.txt' 
 
-      - name: Gitleaks Scan (Checks Tab)
+  gitleaks-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Gitleaks Scan
         uses: reviewdog/action-gitleaks@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
-          filter_mode: nofilter
+          filter_mode: diff_context
 
-      - name: Detect Secrets (Checks Tab)
+  detect-secrets-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect Secrets Scan
         uses: reviewdog/action-detect-secrets@v0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           detect_secrets_flags: '--exclude-files .git/*'
           reporter: github-check
-          filter_mode: nofilter
-  
-      - name: GitHub Actions Lint (Checks Tab)
+          filter_mode: diff_context
+
+  github_actions_lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: GitHub Actions Lint
         uses: reviewdog/action-actionlint@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
-          filter_mode: nofilter
+          filter_mode: diff_context
 
-      - name: Shfmt Code Review (Checks Tab)
+  shfmt:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shfmt
         uses: reviewdog/action-shfmt@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           shfmt_flags: "-i 4 -ci"
-          filter_mode: nofilter
+          filter_mode: diff_context
 
-      - name: ShellCheck Code Review (Checks Tab)
+  shellcheck:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ShellCheck
         uses: reviewdog/action-shellcheck@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
-          filter_mode: nofilter
+          filter_mode: diff_context
 
-      - name: TFLint Code Review (Checks Tab)
+  tflint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: TFLint
         uses: reviewdog/action-tflint@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tflint_rulesets: "aws azurerm google"
           reporter: github-check
-          filter_mode: nofilter
+          filter_mode: diff_context
 
-      - name: TFSec Scan (Checks Tab)
-        uses: reviewdog/action-tfsec@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          reporter: github-check
-          filter_mode: nofilter
-
-  # Checks Tab Matrix
-  checks-tab-matrix:
-    name: Checks Tab Matrix
+  terraform-validate:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
         provider: [aws, azure, gcp]
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Terraform Validate ${{ matrix.provider }} (Checks Tab)
+
+      - name: Terraform Validate
         uses: reviewdog/action-terraform-validate@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           terraform_version: 1.12.0
           workdir: terraform/${{ matrix.provider }}
-          reporter: github-pr-review
+          reporter: github-check
+          filter_mode: diff_context
+
+  tfsec-scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: TFSec Scan
+        uses: reviewdog/action-tfsec@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reporter: github-check
           filter_mode: diff_context
