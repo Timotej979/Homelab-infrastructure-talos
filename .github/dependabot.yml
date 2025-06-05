@@ -5,17 +5,63 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "chore(github-actions-deps)"
+      prefix: "chore-main (github-actions-deps)"
     labels:
       - "dependencies"
       - "github-actions"
+    target-branch: "main"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore-stage (github-actions-deps)"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    target-branch: "stage"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore-dev (github-actions-deps)"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    target-branch: "dev"
 
   - package-ecosystem: "terraform"
     directory: "/terraform"
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "chore(terraform-deps)"
+      prefix: "chore-main (terraform-deps)"
     labels:
       - "dependencies"
       - "terraform"
+    target-branch: "main"
+
+  - package-ecosystem: "terraform"
+    directory: "/terraform"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore-stage (terraform-deps)"
+    labels:
+      - "dependencies"
+      - "terraform"
+    target-branch: "stage"
+
+  - package-ecosystem: "terraform"
+    directory: "/terraform"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore-dev (terraform-deps)"
+    labels:
+      - "dependencies"
+      - "terraform"
+    target-branch: "dev"
