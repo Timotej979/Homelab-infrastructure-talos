@@ -121,7 +121,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           shfmt_flags: "-i 4 -ci"
-          reporter: github-pr-review
           filter_mode: diff_context
 
       - name: shfmt (Checks Tab)
@@ -129,7 +128,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           shfmt_flags: "-i 4 -ci"
-          reporter: github-check
           filter_mode: nofilter
 
   shellcheck:
