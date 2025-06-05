@@ -36,7 +36,7 @@ jobs:
           version: ${{ env.PACKER_VERSION }}
 
       - name: Build Image
-        working-directory: ./hetzner/templates
+        working-directory: ./packer/hetzner/templates
         run: |
           # Define colors for logging
           GREEN='\033[38;5;82m'   # Bright green

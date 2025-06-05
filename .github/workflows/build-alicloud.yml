@@ -43,7 +43,7 @@ jobs:
           oidc-provider-arn: ${{ secrets.ALICLOUD_OIDC_PROVIDER_ARN }}
 
       - name: Build Image
-        working-directory: ./alicloud/templates
+        working-directory: ./packer/alicloud/templates
         run: |
           # Define colors for logging
           GREEN='\033[38;5;82m'   # Bright green

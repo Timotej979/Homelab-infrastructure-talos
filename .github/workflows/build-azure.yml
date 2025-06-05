@@ -43,7 +43,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         
       - name: Build Image
-        working-directory: ./azure/templates
+        working-directory: ./packer/azure/templates
         run: |
           # Define colors for logging
           GREEN='\033[38;5;82m'   # Bright green

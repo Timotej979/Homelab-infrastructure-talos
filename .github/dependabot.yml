@@ -11,7 +11,7 @@ updates:
       - "github-actions"
 
   - package-ecosystem: "terraform"
-    directory: "/"
+    directory: "/terraform"
     schedule:
       interval: "weekly"
     commit-message:

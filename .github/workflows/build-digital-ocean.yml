@@ -36,7 +36,7 @@ jobs:
           version: ${{ env.PACKER_VERSION }}
 
       - name: Build Image
-        working-directory: ./digital-ocean/templates
+        working-directory: ./packer/digital-ocean/templates
         run: |
           # Define colors for logging
           GREEN='\033[38;5;82m'   # Bright green

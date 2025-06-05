@@ -44,7 +44,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
 
       - name: Build Image
-        working-directory: ./aws/templates
+        working-directory: ./packer/aws/templates
         run: |
           # Define colors for logging
           GREEN='\033[38;5;82m'   # Bright green

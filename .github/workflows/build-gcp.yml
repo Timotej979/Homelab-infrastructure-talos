@@ -45,7 +45,7 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Build Image
-        working-directory: ./gcp/templates
+        working-directory: ./packer/gcp/templates
         run: |
           # Define colors for logging
           GREEN='\033[38;5;82m'   # Bright green

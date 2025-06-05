@@ -82,7 +82,7 @@ build {
     }
 
     # Maybe add another shell-local provider to upload the image to the registry 
-    # (Simmilar alternative approach can be used for other cloud platforms if direct overwrite is not possible, might even be better)
+    # (Similar alternative approach can be used for other cloud platforms if direct overwrite is not possible, might even be better)
 
     provisioner "shell" {
         inline = [

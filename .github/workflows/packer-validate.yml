@@ -77,7 +77,7 @@ jobs:
           
           # Find all Packer template files (*.pkr.hcl) while excluding certain directories
           find . \
-            -type d \( -path "./.github/workflows" -o -path "./.git" -o -path "./docs" -o -path ./configure-oidc \) -prune -o \
+            -type d \( -path "./.github/workflows" -o -path "./.git" -o -path "./docs" -o -path ./terraform \) -prune -o \
             -name "*.pkr.hcl" -print | while read -r file; do
 
               # Echo which root folder is being processed

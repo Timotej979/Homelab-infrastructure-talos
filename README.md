@@ -100,9 +100,25 @@ Requirements for using the automatic build pipeline comprising of install-script
 - Packer configurations:
   - Packer ([Link](https://www.packer.io/))
 
-- Security scans:
-  - Trivy ([Link](https://trivy.dev/latest/))
-  - ShellCheck ([Link](https://www.shellcheck.net/))
+- Security scans (CVE, Linting, etc.):
+  - Mardown Lint ([Link](https://github.com/markdownlint)
+
+  - Repository Scans:
+    - Trivy ([Link](https://trivy.dev/latest/))
+    - GitLeaks ([Link](https://github.com/gitleaks/gitleaks))
+    - Detect Secrets ([Link](https://github.com/Yelp/detect-secrets))
+  
+  - Shell script scans:
+    - Shfmt ([Link](https://github.com/patrickvane/shfmt))
+    - ShellCheck ([Link](https://www.shellcheck.net/))
+  
+  - Packer scans:
+    - Packer Validate ([Link](https://www.packer.io/docs/commands/validate))
+
+  - Terraform scans:
+    - TFLint ([Link](https://github.com/terraform-linters/tflint))
+    - TFSec ([Link](https://github.com/aquasecurity/tfsec))
+    - Checkov ([Link](https://www.checkov.io/))
 
 - Release processes:
   - Github Actions ([Link](https://github.com/features/actions))
@@ -112,11 +128,11 @@ Requirements for using the automatic build pipeline comprising of install-script
 
 This repository uses a security best-practice CI/CD pipeline by utilizing OIDC temporary credentials to authenticate with platforms that support it. To set up the OIDC providers for the platforms that support them follow the instructions below:
 
-1. Go to the configure-oidc directory, select the desired platform for which you want to set up OIDC and configure the terraform variables that are required to create the underlying infrastructure for the platform.
+1. Go to the terraform directory, select the desired platform for which you want to set up OIDC and configure the terraform variables that are required to create the underlying infrastructure for the platform.
 
 ```bash
 # Select the desired platform
-cd configure-oidc/<platform_name>
+cd terraform/<platform_name>
 
 # Copy the terraform.tfvars.example file to terraform.tfvars
 cp terraform.tfvars.example terraform.tfvars
@@ -174,7 +190,7 @@ Examples:
   ./install-talos.sh v1.9.3 amd64 '["siderolabs/gvisor", "siderolabs/amd-ucode"]'    Fetch version v1.9.3 with extensions.
 ```
 
-2. You can now either change the default version in the `./<platform_name>/scripts/install-talos.sh` script (**Not recommended**) or pass the version/architecture as an argument to the script in the `./<platform_name>/templates/<platform_name>.pkr.hcl` file in the `data "external" "talos_info"` block (**Recomended**).
+2. You can now either change the default version in the `./<platform_name>/scripts/install-talos.sh` script (**Not recommended**) or pass the version/architecture as an argument to the script in the `./<platform_name>/templates/<platform_name>.pkr.hcl` file in the `data "external" "talos_info"` block (**Recommended**).
 
 ```hcl
 data "external" "talos_info" {
