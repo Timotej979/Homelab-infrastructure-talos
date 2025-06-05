@@ -1,8 +1,8 @@
 <h1 align="center">HOMELAB INFRASTRUCTURE TALOS</h1>
 
 <div align="center">
-  <img src="./docs/assets/talos-logo.png" 
-       style="height: 250px; width: auto;" 
+  <img src="./docs/assets/talos-logo.png"
+       style="height: 250px; width: auto;"
        alt="Talos OS Logo">
 </div>
 
@@ -185,7 +185,8 @@ Examples:
   ./install-talos.sh v1.9.3 amd64 '["siderolabs/gvisor", "siderolabs/amd-ucode"]'    Fetch version v1.9.3 with extensions.
 ```
 
-2. You can now either change the default version in the `./<platform_name>/scripts/install-talos.sh` script (**Not recommended**) or pass the version/architecture as an argument to the script in the `./<platform_name>/templates/<platform_name>.pkr.hcl` file in the `data "external" "talos_info"` block (**Recommended**).
+2. You can now either change the default version in the `./<platform_name>/scripts/install-talos.sh` script (**Not recommended**)or pass the version/architecture as an argument to the script in the `./<platform_name>/templates/<platform_name>.pkr.hcl` file in
+the `data "external" "talos_info"` block (**Recommended**).
 
 ```hcl
 data "external" "talos_info" {
