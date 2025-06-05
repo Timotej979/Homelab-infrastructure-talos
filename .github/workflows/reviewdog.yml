@@ -14,7 +14,7 @@ permissions:
 jobs:
   # PR Review
   pr-review:
-    name: Reviewdog Code Review (PR Review)
+    name: PR Review
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -88,7 +88,7 @@ jobs:
   
   # PR Review Matrix
   pr-review-matrix:
-    name: Reviewdog Code Review (PR Review Matrix)
+    name: PR Review Matrix
     runs-on: ubuntu-24.04
     strategy:
       matrix:
@@ -107,7 +107,7 @@ jobs:
 
   # Checks Tab
   checks-tab:
-    name: Reviewdog Code Review (Checks Tab)
+    name: Checks Tab
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -181,7 +181,7 @@ jobs:
 
   # Checks Tab Matrix
   checks-tab-matrix:
-    name: Reviewdog Code Review (Checks Tab Matrix)
+    name: Checks Tab Matrix
     runs-on: ubuntu-24.04
     strategy:
       matrix:
