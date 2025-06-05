@@ -185,7 +185,7 @@ Examples:
   ./install-talos.sh v1.9.3 amd64 '["siderolabs/gvisor", "siderolabs/amd-ucode"]'    Fetch version v1.9.3 with extensions.
 ```
 
-2. You can now either change the default version in the `./<platform_name>/scripts/install-talos.sh` script (**Not recommended**)or pass the version/architecture as an argument to the script in the `./<platform_name>/templates/<platform_name>.pkr.hcl` file in
+1. You can now either change the default version in the `./<platform_name>/scripts/install-talos.sh` script (**Not recommended**)or pass the version/architecture as an argument to the script in the `./<platform_name>/templates/<platform_name>.pkr.hcl` file in
 the `data "external" "talos_info"` block (**Recommended**).
 
 ```hcl
@@ -194,7 +194,7 @@ data "external" "talos_info" {
 }
 ```
 
-3. Commit the changes and push them to the repository.
+1. Commit the changes and push them to the repository.
 
 ```bash
 git commit -m "Fixture default Talos OS version to X.Y.Z for <platform_name>"
