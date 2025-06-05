@@ -1,11 +1,10 @@
 <h1 align="center">HOMELAB INFRASTRUCTURE TALOS</h1>
 
 <div align="center">
-  <img src="./docs/assets/talos-logo.png" style="height: 250px; width: auto;">
+  <img src="./docs/assets/talos-logo.png" style="height: 250px; width: auto;" alt="Talos OS Logo">
 </div>
 
 <br>
-
 
 <h2 align="center">SECURITY SCAN PIPELINES</h2>
 
@@ -22,7 +21,6 @@
 </p>
 
 <br>
-
 
 <h2 align="center">RELEASE PIPELINES</h2>
 
@@ -47,7 +45,6 @@
 </p>
 
 <br>
-
 
 <p align="center">
   <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml">
@@ -84,24 +81,23 @@
 
 ---
 
-This repository ia a collection of independently-versioned packer release processes for machine images of Talos OS for various platforms. The packer configurations are designed to be run in a CI/CD pipeline to build and release new versions of Talos OS images on a regular basis.
-
+This repository is a collection of independently-versioned packer release processes for machine images of Talos OS for various platforms. The packer configurations are designed to be run in a CI/CD pipeline to build and release new versions of Talos OS images on a regular basis.
 
 ## Requirements
 
-Requirements for using the automatic build pipeline comprising of install-scripts, packer configurations, security scans and release processes:
+Requirements for using the automatic build pipeline comprising install-scripts, packer configurations, security scans and release processes:
 
 - Install scripts:
   - POSIX Shell ([Link](https://pubs.opengroup.org/onlinepubs/9699919799/))
   - jq ([Link](https://stedolan.github.io/jq/))
   - curl ([Link](https://curl.se/))
-  - quemu-img ([Link](https://www.qemu.org/))
+  - qemu-img ([Link](https://www.qemu.org/))
 
 - Packer configurations:
   - Packer ([Link](https://www.packer.io/))
 
 - Security scans (CVE, Linting, etc.):
-  - Mardown Lint ([Link](https://github.com/markdownlint)
+  - Markdown Lint ([Link](https://github.com/markdownlint))
 
   - Repository Scans:
     - Trivy ([Link](https://trivy.dev/latest/))
@@ -123,7 +119,6 @@ Requirements for using the automatic build pipeline comprising of install-script
 - Release processes:
   - Github Actions ([Link](https://github.com/features/actions))
 
-
 ## Initial setup
 
 This repository uses a security best-practice CI/CD pipeline by utilizing OIDC temporary credentials to authenticate with platforms that support it. To set up the OIDC providers for the platforms that support them follow the instructions below:
@@ -144,13 +139,11 @@ code terraform.tfvars
 ```
 
 OIDC providers are currently supported for the following platforms:
+
 - [x] HCP (HashiCorp Cloud Platform for Packer authentication) [REQUIRED]
 - [x] AWS (Amazon Web Services for Packer authentication) [OPTIONAL]
 - [x] Azure (Microsoft Azure for Packer authentication) [OPTIONAL]
 - [x] GCP (Google Cloud Platform for Packer authentication) [OPTIONAL]
-
-
-
 
 ## Usage
 
@@ -208,6 +201,7 @@ git push
 ## Supported platforms
 
 Currently the following platforms and architectures are supported or rather being actively worked on:
+
 - [x] AliCloud (amd64/arm64)
 - [x] AWS (amd64/arm64)
 - [x] Azure (amd64/arm64)
