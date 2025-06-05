@@ -1,4 +1,4 @@
-name: Reviewdog Code Review
+name: Reviewdog Commit Check
 
 on:
   pull_request:
@@ -23,7 +23,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           typos_flags: '--config .github/workflows/typos-config/typos.toml'
           reporter: github-check
-          filter_mode: diff_context
+          filter_mode: nofilter
 
   markdownlint-check:
     runs-on: ubuntu-24.04
@@ -34,9 +34,9 @@ jobs:
         uses: reviewdog/action-markdownlint@v0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          markdownlint_flags: '. --config .github/workflows/markdownlint-config/markdownlint.txt'
           reporter: github-check
-          filter_mode: diff_context
-          markdownlint_flags: '. --config .github/workflows/markdownlint-config/markdownlint.txt' 
+          filter_mode: nofilter
 
   gitleaks-scan:
     runs-on: ubuntu-24.04
@@ -48,7 +48,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
-          filter_mode: diff_context
+          filter_mode: nofilter
 
   detect-secrets-scan:
     runs-on: ubuntu-24.04
@@ -61,7 +61,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           detect_secrets_flags: '--exclude-files .git/*'
           reporter: github-check
-          filter_mode: diff_context
+          filter_mode: nofilter
 
   github_actions_lint:
     runs-on: ubuntu-24.04
@@ -73,7 +73,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
-          filter_mode: diff_context
+          filter_mode: nofilter
 
   shfmt:
     runs-on: ubuntu-24.04
@@ -85,7 +85,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           shfmt_flags: "-i 4 -ci"
-          filter_mode: diff_context
+          filter_mode: nofilter
 
   shellcheck:
     runs-on: ubuntu-24.04
@@ -97,7 +97,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
-          filter_mode: diff_context
+          filter_mode: nofilter
 
   tflint:
     runs-on: ubuntu-24.04
@@ -110,7 +110,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tflint_rulesets: "aws azurerm google"
           reporter: github-check
-          filter_mode: diff_context
+          filter_mode: nofilter
 
   terraform-validate:
     runs-on: ubuntu-24.04
@@ -127,7 +127,7 @@ jobs:
           terraform_version: 1.12.0
           workdir: terraform/${{ matrix.provider }}
           reporter: github-check
-          filter_mode: diff_context
+          filter_mode: nofilter
 
   tfsec-scan:
     runs-on: ubuntu-24.04
@@ -139,4 +139,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
-          filter_mode: diff_context
+          filter_mode: nofilter
