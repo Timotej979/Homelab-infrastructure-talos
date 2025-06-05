@@ -82,6 +82,7 @@ jobs:
         uses: reviewdog/action-detect-secrets@v0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          detect_secrets_flags: '--exclude-files .git/*'
           reporter: github-pr-review
           filter_mode: diff_context
 
@@ -89,6 +90,7 @@ jobs:
         uses: reviewdog/action-detect-secrets@v0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          detect_secrets_flags: '--exclude-files .git/*'
           reporter: github-check
           filter_mode: nofilter
 

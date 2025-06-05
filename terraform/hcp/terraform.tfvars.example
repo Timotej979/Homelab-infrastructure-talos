@@ -1,5 +1,5 @@
 hcp_client_id     = "your-client-id"
-hcp_client_secret = "your-client-secret"
+hcp_client_secret = "your-client-secret"    # pragma: allowlist secret
 hcp_project_id    = "your-project-id"
 
 workload_identity_providers_config = {
