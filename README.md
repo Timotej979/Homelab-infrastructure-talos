@@ -1,7 +1,9 @@
 <h1 align="center">HOMELAB INFRASTRUCTURE TALOS</h1>
 
 <div align="center">
-  <img src="./docs/assets/talos-logo.png" style="height: 250px; width: auto;" alt="Talos OS Logo">
+  <img src="./docs/assets/talos-logo.png" 
+       style="height: 250px; width: auto;" 
+       alt="Talos OS Logo">
 </div>
 
 <br>
@@ -140,7 +142,7 @@ code terraform.tfvars
 
 OIDC providers are currently supported for the following platforms:
 
-- [x] HCP (HashiCorp Cloud Platform for Packer authentication) [REQUIRED]
+- [x] HCP (Hashicorp Cloud Platform for Packer authentication) [REQUIRED]
 - [x] AWS (Amazon Web Services for Packer authentication) [OPTIONAL]
 - [x] Azure (Microsoft Azure for Packer authentication) [OPTIONAL]
 - [x] GCP (Google Cloud Platform for Packer authentication) [OPTIONAL]
