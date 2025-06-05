@@ -25,7 +25,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: diff_context
 
-      - name: Typo Check (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-typos@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -46,7 +46,7 @@ jobs:
           filter_mode: diff_context
           markdownlint_flags: '. --config .github/workflows/markdownlint-config/markdownlint.txt'
 
-      - name: Markdown Lint (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-markdownlint@v0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -66,7 +66,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: diff_context
 
-      - name: Gitleaks Scan (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-gitleaks@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -86,7 +86,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: diff_context
 
-      - name: Detect Secrets (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-detect-secrets@v0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -106,7 +106,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: diff_context
 
-      - name: GitHub Actions Lint (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-actionlint@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -125,7 +125,7 @@ jobs:
           shfmt_flags: "-i 4 -ci"
           filter_mode: diff_context
 
-      - name: shfmt (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-shfmt@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -144,7 +144,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: diff_context
 
-      - name: ShellCheck (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-shellcheck@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -164,7 +164,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: diff_context
 
-      - name: TFLint (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-tflint@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -189,7 +189,7 @@ jobs:
           reporter: github-pr-review
           filter_mode: diff_context
 
-      - name: Terraform Validate ${{ matrix.provider }} (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-terraform-validate@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -203,14 +203,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: tfsec Scan (PR Review)
+      - name: TFSec Scan (PR Review)
         uses: reviewdog/action-tfsec@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           filter_mode: diff_context
 
-      - name: tfsec Scan (Checks Tab)
+      - name: Reviewdog Code Review (Checks Tab)
         uses: reviewdog/action-tfsec@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
