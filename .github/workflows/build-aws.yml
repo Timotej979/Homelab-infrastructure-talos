@@ -63,11 +63,11 @@ jobs:
             log_error "Failed to configure AWS credentials!"
             exit 1
           }
-          export AWS_SECRET_ACCESS_KEY = "${{ steps.aws-configure-credentials.outputs.aws-secret-access-key }}" || {
+          export AWS_SECRET_ACCESS_KEY="${{ steps.aws-configure-credentials.outputs.aws-secret-access-key }}" || {
             log_error "Failed to configure AWS credentials!"
             exit 1
           }
-          export AWS_SESSION_TOKEN = "${{ steps.aws-configure-credentials.outputs.aws-session-token }}" || {
+          export AWS_SESSION_TOKEN="${{ steps.aws-configure-credentials.outputs.aws-session-token }}" || {
             log_error "Failed to configure AWS credentials!"
             exit 1
           }

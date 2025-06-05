@@ -49,7 +49,7 @@ jobs:
           else
             IFS=',' read -ra EXCLUDED <<< "$EXCLUDED_IMAGES"
           fi
-          log_success "Successfully parsed excluded images: ${EXCLUDED[@]}"
+          log_success "Successfully parsed excluded images: ${EXCLUDED[*]}"
 
           # Define all possible cloud images
           log_info "Defining all possible cloud images..."

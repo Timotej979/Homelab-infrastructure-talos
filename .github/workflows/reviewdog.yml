@@ -15,7 +15,7 @@ jobs:
   typo-check:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Typo Check (PR Review)
         uses: reviewdog/action-typos@v1
@@ -36,7 +36,7 @@ jobs:
   markdownlint-check:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Markdown Lint (PR Review)
         uses: reviewdog/action-markdownlint@v0
@@ -44,7 +44,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           filter_mode: diff_context
-          markdownlint_flags: '. --config .github/workflows/markdownlint-config/markdownlint.yml'
+          markdownlint_flags: '. --config .github/workflows/markdownlint-config/markdownlint.txt'
 
       - name: Markdown Lint (Checks Tab)
         uses: reviewdog/action-markdownlint@v0
@@ -52,12 +52,12 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-check
           filter_mode: nofilter
-          markdownlint_flags: '. --config .github/workflows/markdownlint-config/markdownlint.yml' 
+          markdownlint_flags: '. --config .github/workflows/markdownlint-config/markdownlint.txt' 
 
   gitleaks-scan:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Gitleaks Scan (PR Review)
         uses: reviewdog/action-gitleaks@v1
@@ -76,7 +76,7 @@ jobs:
   detect-secrets-scan:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Detect Secrets (PR Review)
         uses: reviewdog/action-detect-secrets@v0
@@ -95,7 +95,7 @@ jobs:
   github_actions_lint:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: GitHub Actions Lint (PR Review)
         uses: reviewdog/action-actionlint@v1
@@ -114,7 +114,7 @@ jobs:
   shfmt:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: shfmt (PR Review)
         uses: reviewdog/action-shfmt@v1
@@ -135,7 +135,7 @@ jobs:
   shellcheck:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: ShellCheck (PR Review)
         uses: reviewdog/action-shellcheck@v1
@@ -154,7 +154,7 @@ jobs:
   tflint:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: TFLint (PR Review)
         uses: reviewdog/action-tflint@v1
@@ -178,7 +178,7 @@ jobs:
       matrix:
         provider: [aws, azure, gcp]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Terraform Validate ${{ matrix.provider }} (PR Review)
         uses: reviewdog/action-terraform-validate@v1
@@ -201,7 +201,7 @@ jobs:
   tfsec-scan:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: tfsec Scan (PR Review)
         uses: reviewdog/action-tfsec@v1
