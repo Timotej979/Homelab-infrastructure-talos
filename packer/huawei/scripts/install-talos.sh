@@ -36,13 +36,13 @@ show_help() {
     echo "  TALOS_EXTENSIONS    (Optional) Specify the Talos extensions to use."
     echo "                                 Default is siderolabs/qemu-guest-agent."
     echo "                                 Check list of available extensions at https://github.com/siderolabs/extensions"
-    echo 
+    echo
     echo "Examples:"
     echo "  $0                                                                 Fetch latest version with arm64 machine type."
     echo "  $0 v1.9.3                                                          Fetch version v1.9.3."
     echo "  $0 v1.9.3 amd64                                                    Fetch version v1.9.3 with amd64 machine type."
     echo "  $0 v1.9.3 amd64 '[\"siderolabs/gvisor\", \"siderolabs/amd-ucode\"]'    Fetch version v1.9.3 with extensions."
-    echo 
+    echo
     exit 0
 }
 
@@ -88,8 +88,8 @@ generate_image_schematic() {
     # Check the validity of the extensions
     log_info "Checking the validity of the extensions ..."
     if [ -z "$TALOS_EXTENSIONS" ]; then
-        TALOS_EXTENSIONS='["siderolabs/qemu-guest-agent"]'   # Default value
-    elif ! echo "$TALOS_EXTENSIONS" | jq empty > /dev/null 2>&1; then
+        TALOS_EXTENSIONS='["siderolabs/qemu-guest-agent"]' # Default value
+    elif ! echo "$TALOS_EXTENSIONS" | jq empty >/dev/null 2>&1; then
         log_error "Error: Extensions $TALOS_EXTENSIONS is not a valid JSON array. Please provide the extensions in the format '[\"extension1\", \"extension2\"]'"
         exit 1
     fi
@@ -99,7 +99,7 @@ generate_image_schematic() {
     # Generate the image schematic to send to the API
     log_info "Generating the image schematic to send to the API ..."
     TALOS_SCHEMATIC_SPECIFICATION=$(jq -n --argjson talos_extensions "$TALOS_EXTENSIONS" \
-    '{
+        '{
         "customization": {
             "extraKernelArgs": [],
             "meta": [{}],
@@ -113,8 +113,8 @@ generate_image_schematic() {
     # Send the image schematic to the Talos Factory API
     log_info "Sending the image schematic to the Talos Factory API ..."
     RESPONSE=$(curl -s -X POST "$TALOS_IMAGE_FACTORY_URL/schematics" \
-                                 -H "Content-Type: application/json" \
-                                 -d "$TALOS_SCHEMATIC_SPECIFICATION") || {
+        -H "Content-Type: application/json" \
+        -d "$TALOS_SCHEMATIC_SPECIFICATION") || {
         log_error "Error: Failed to generate the image schematic"
         exit 1
     }
@@ -134,7 +134,7 @@ fetch_image_from_talos_factory() {
     # Check validity of the machine type
     log_info "Checking the validity of the machine type ..."
     if [ -z "$TALOS_MACHINE_TYPE" ]; then
-        TALOS_MACHINE_TYPE="arm64"  # Default value
+        TALOS_MACHINE_TYPE="arm64" # Default value
     elif [ "$TALOS_MACHINE_TYPE" != "amd64" ] && [ "$TALOS_MACHINE_TYPE" != "arm64" ]; then
         log_error "Error: Machine type $MACHINE_TYPE is not valid. Please provide one of the valid machine types which are: amd64, arm64"
         exit 1
@@ -150,7 +150,6 @@ fetch_image_from_talos_factory() {
 
     log_success "Machine image for Huawei cloud for $TALOS_MACHINE_TYPE fetched successfully"
 }
-
 
 # INPUTS
 TALOS_VERSION=$1
