@@ -147,7 +147,6 @@ OIDC providers are currently supported for the following platforms:
 - [x] Azure (Microsoft Azure for Packer authentication) [OPTIONAL]
 - [x] GCP (Google Cloud Platform for Packer authentication) [OPTIONAL]
 
-
 ## Usage
 
 To build a new version of a Talos OS image just commit an empty commit to the repository. The CI/CD pipeline will automatically build the new image using the latest stable Talos OS version (This runs by default) and save it to the packer registry.
