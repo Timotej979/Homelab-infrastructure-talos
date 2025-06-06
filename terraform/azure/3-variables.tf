@@ -41,17 +41,15 @@ variable "workload_identity_providers_config" {
             repository_claim    = "Timotej979/Homelab-infrastructure-talos"
             ref_claim           = "refs/heads/main"
             workflow_ref_claims = [
-                for workflow_name in [
-                    "build-gcp.yml",
-                ] : "Timotej979/Homelab-infrastructure-talos/.github/workflows/${workflow_name}@refs/heads/main"
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-azure.yml@refs/heads/main"
             ]
         }
-        terragrunt = {
-            name             = "terragrunt-gh-actions"
-            actor_claim      = "Timotej979"
-            repository_claim = "Timotej979/Homelab-infrastructure-terragrunt"
-            ref_claim        = "refs/heads/main"
-            workflow_ref_claims = []
-        }
+        # terragrunt = {
+        #     name             = "terragrunt-gh-actions"
+        #     actor_claim      = "Timotej979"
+        #     repository_claim = "Timotej979/Homelab-infrastructure-terragrunt"
+        #     ref_claim        = "refs/heads/main"
+        #     workflow_ref_claims = []
+        # }
     }
 }
