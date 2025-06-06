@@ -1,10 +1,10 @@
-variable "aws_region" {
-    description = "AWS region to use"
+variable "aws_profile" {
+    description = "The AWS CLI profile to use"
     type        = string
 }
 
-variable "aws_profile" {
-    description = "The AWS CLI profile to use"
+variable "aws_region" {
+    description = "AWS region to use"
     type        = string
 }
 
