@@ -12,53 +12,50 @@ locals {
         }
     }
     flattened_roles = merge([
-        for k, workflows in local.github_oidc_roles_map : workflows
+        for _, workflows in local.github_oidc_roles_map : workflows
     ]...)
 }
 
-# Define the OIDC provider for GitHub Actions
-resource "aws_iam_openid_connect_provider" "github" {
-    url            = "https://token.actions.githubusercontent.com"
-    client_id_list = ["sts.amazonaws.com"]
+# Define an OIDC provider for GitHub Actions
+resource "tencentcloud_cam_oidc_provider" "github" {
+    name        = "github-actions"
+    description = "OIDC provider for GitHub Actions"
+    url         = "https://token.actions.githubusercontent.com"
+    identity_url = "https://token.actions.githubusercontent.com"
+    client_id_list = ["sts.tencentcloudapi.com"]
 }
 
-# Define the IAM policy document for GitHub OIDC roles
-data "aws_iam_policy_document" "github_oidc" {
+# Trust policy documents for each GitHub workflow
+data "tencentcloud_cam_role_policy_document" "github_oidc" {
     for_each = local.flattened_roles
 
     statement {
         effect = "Allow"
-        actions = ["sts:AssumeRoleWithWebIdentity"]
+        action = ["name/sts:AssumeRoleWithOIDC"]
 
-        principals {
+        principal {
             type        = "Federated"
-            identifiers = [aws_iam_openid_connect_provider.github.arn]
+            identifiers = [tencentcloud_cam_oidc_provider.github.id]
         }
 
         condition {
             test     = "StringEquals"
             variable = "token.actions.githubusercontent.com:aud"
-            values   = ["sts.amazonaws.com"]
+            values   = ["sts.tencentcloudapi.com"]
         }
 
         condition {
-            test     = "StringEquals"
+            test     = "StringLike"
             variable = "token.actions.githubusercontent.com:sub"
             values   = ["repo:${each.value.repository_claim}:ref:${each.value.ref_claim}:workflow:${each.value.workflow_file}"]
-        }
-
-        condition {
-            test     = "StringEquals"
-            variable = "token.actions.githubusercontent.com:actor"
-            values   = [each.value.actor_claim]
         }
     }
 }
 
-# Define the IAM roles for GitHub OIDC
-resource "aws_iam_role" "github_oidc_roles" {
+# Role definitions
+resource "tencentcloud_cam_role" "github_oidc_roles" {
     for_each = local.flattened_roles
-    name = "${each.key}-role"
-    description = "IAM role for GitHub Actions workflow ${each.key}"
-    assume_role_policy = data.aws_iam_policy_document.github_oidc[each.key].json
+    name        = "${each.key}-role"
+    description = "CAM role for GitHub Actions workflow ${each.key}"
+    document    = data.tencentcloud_cam_role_policy_document.github_oidc[each.key].json
 }

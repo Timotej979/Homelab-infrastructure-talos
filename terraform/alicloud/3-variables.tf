@@ -1,10 +1,10 @@
-variable "aws_profile" {
-    description = "AWS CLI profile"
+variable "alicloud_profile" {
+    description = "Alicloud CLI profile"
     type        = string
 }
 
-variable "aws_region" {
-    description = "AWS region"
+variable "alicloud_region" {
+    description = "Alicloud region"
     type        = string
 }
 
@@ -24,7 +24,7 @@ variable "workload_identity_providers_config" {
             repository_claim    = "Timotej979/Homelab-infrastructure-talos"
             ref_claim           = "refs/heads/main"
             workflow_ref_claims = [
-                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main"
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-alicloud.yml@refs/heads/main"
             ]
         }
         # terragrunt = {

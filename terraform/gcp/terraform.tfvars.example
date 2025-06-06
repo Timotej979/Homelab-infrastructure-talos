@@ -1,5 +1,5 @@
-gcp_credentials_file_path = "your-credentials-file-path"
-gcp_project_id            = "your-project-id"
+gcp_credentials_file_path = "your-gcp-credentials-file-path"
+gcp_project_id            = "your-gcp-project-id"
 gcp_region                = "your-gcp-region"
 
 workload_identity_providers_config = {

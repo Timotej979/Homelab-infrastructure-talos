@@ -1,17 +1,17 @@
 variable "hcp_client_id" {
-    description = "The client ID for HCP authentication (Requires Admin role for HCP project)"
+    description = "Client ID for HCP authentication (Requires Admin role for HCP project)"
     type        = string
     sensitive   = true
 }
 
 variable "hcp_client_secret" {
-    description = "The client secret for HCP authentication (Requires Admin role for HCP project)"
+    description = "Client secret for HCP authentication (Requires Admin role for HCP project)"
     type        = string
     sensitive   = true
 }
 
 variable "hcp_project_id" {
-    description = "The HCP project ID"
+    description = "HCP project ID"
     type        = string
     sensitive   = true
 }

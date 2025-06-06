@@ -1,6 +1,6 @@
-hcp_client_id     = "your-client-id"
-hcp_client_secret = "your-client-secret"    # pragma: allowlist secret
-hcp_project_id    = "your-project-id"
+hcp_client_id     = "your-hcp-client-id"
+hcp_client_secret = "your-hcp-client-secret"    # pragma: allowlist secret
+hcp_project_id    = "your-hcp-project-id"
 
 workload_identity_providers_config = {
     packer = {
@@ -9,7 +9,6 @@ workload_identity_providers_config = {
         repository_claim    = "Timotej979/Homelab-infrastructure-talos"
         ref_claim           = "refs/heads/main"
         workflow_ref_claims = [
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-all.yml@refs/heads/main",
             "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-alicloud.yml@refs/heads/main",
             "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main",
             "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-azure.yml@refs/heads/main",

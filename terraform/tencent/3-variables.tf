@@ -1,10 +1,17 @@
-variable "aws_profile" {
-    description = "AWS CLI profile"
+variable "tencent_secret_id" {
+    description = "Tencent Cloud Secret ID"
     type        = string
+    sensitive   = true
 }
 
-variable "aws_region" {
-    description = "AWS region"
+variable "tencent_secret_key" {
+    description = "Tencent Cloud Secret Key"
+    type        = string
+    sensitive   = true
+}
+
+variable "tencent_region" {
+    description = "Tencent Cloud region"
     type        = string
 }
 
@@ -24,7 +31,7 @@ variable "workload_identity_providers_config" {
             repository_claim    = "Timotej979/Homelab-infrastructure-talos"
             ref_claim           = "refs/heads/main"
             workflow_ref_claims = [
-                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main"
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-tencent.yml@refs/heads/main"
             ]
         }
         # terragrunt = {
