@@ -1,10 +1,10 @@
 output "alicloud_oidc_audience" {
-    description = "OIDC audience used for GitHub Actions in Alibaba Cloud"
+    description = "OIDC audience used for GitHub Actions"
     value       = "sts.aliyuncs.com"
 }
 
 output "alicloud_oidc_provider_arn" {
-    description = "The ARN of the GitHub OIDC provider in Alibaba Cloud"
+    description = "The ARN of the GitHub OIDC provider"
     value       = alicloud_ims_oidc_provider.github.arn
 }
 

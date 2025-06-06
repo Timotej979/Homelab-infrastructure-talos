@@ -1,8 +1,6 @@
 name: Reviewdog Commit Check
 
 on:
-  pull_request:
-    branches: [main, stage, dev]
   push:
     branches: [main, stage, dev]
 
