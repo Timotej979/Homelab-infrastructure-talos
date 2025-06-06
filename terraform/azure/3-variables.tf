@@ -22,7 +22,7 @@ variable "azure_client_secret" {
 
 variable "azure_region" {
   description = "Azure region"
-  default     = "West Europe"
+  type = string
 }
 
 variable "workload_identity_providers_config" {
