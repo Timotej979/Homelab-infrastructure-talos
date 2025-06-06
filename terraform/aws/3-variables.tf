@@ -24,9 +24,7 @@ variable "workload_identity_providers_config" {
             repository_claim    = "Timotej979/Homelab-infrastructure-talos"
             ref_claim           = "refs/heads/main"
             workflow_ref_claims = [
-                for workflow_name in [
-                    "build-aws.yml",
-                ] : "Timotej979/Homelab-infrastructure-talos/.github/workflows/${workflow_name}@refs/heads/main"
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main"
             ]
         }
         # terragrunt = {
