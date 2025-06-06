@@ -1,10 +1,10 @@
 output "aws_oidc_audience" {
-    description = "OIDC audience used for AWS GitHub Actions"
+    description = "OIDC audience used for GitHub Actions"
     value       = "sts.amazonaws.com"
 }
 
 output "aws_region" {
-    description = "AWS region where the OIDC provider is created"
+    description = "Region where the OIDC provider is created"
     value       = var.aws_region
 }
 

@@ -1,20 +1,19 @@
 # Define a local map for all the role definitions
 locals {
-  github_oidc_roles_map = {
-    for k, config in var.workload_identity_providers_config : k => {
-      for workflow_ref in config.workflow_ref_claims : "${k}-${basename(workflow_ref)}" => {
-        name             = config.name
-        actor_claim      = config.actor_claim
-        repository_claim = config.repository_claim
-        ref_claim        = config.ref_claim
-        workflow_file    = split("/", split("@", workflow_ref)[0])[3]
-      }
+    github_oidc_roles_map = {
+        for k, config in var.workload_identity_providers_config : k => {
+            for workflow_ref in config.workflow_ref_claims : "${k}-${basename(workflow_ref)}" => {
+                name             = config.name
+                actor_claim      = config.actor_claim
+                repository_claim = config.repository_claim
+                ref_claim        = config.ref_claim
+                workflow_file    = split("/", split("@", workflow_ref)[0])[3]
+            }
+        }
     }
-  }
-
-  flattened_roles = merge([
-    for k, workflows in local.github_oidc_roles_map : workflows
-  ]...)
+    flattened_roles = merge([
+        for k, workflows in local.github_oidc_roles_map : workflows
+    ]...)
 }
 
 # Define an OIDC provider for GitHub Actions
@@ -54,10 +53,9 @@ data "alicloud_ram_policy_document" "github_oidc" {
 
 # Define RAM roles for GitHub Actions workflows
 resource "alicloud_ram_role" "github_oidc_roles" {
-  for_each = local.flattened_roles
-
-  name        = "${each.key}-role"
-  document    = data.alicloud_ram_policy_document.github_oidc[each.key].json
-  description = "RAM role for GitHub Actions workflow ${each.key}"
-  force       = true
+    for_each = local.flattened_roles
+    name        = "${each.key}-role"
+    description = "RAM role for GitHub Actions workflow ${each.key}"
+    document    = data.alicloud_ram_policy_document.github_oidc[each.key].json
+    force       = true
 }

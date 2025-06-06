@@ -34,3 +34,12 @@ jobs:
         uses: hashicorp/setup-packer@main
         with:
           version: ${{ env.PACKER_VERSION }}
+
+      - name: Configure Tencent Cloud Credentials via OIDC
+        id: tencentcloud-oidc-auth
+        uses: everpcpc/tencentcloud-oidc-auth@v1
+        with:
+          audience: sts.tencentcloudapi.com
+          region: ${{ secrets.TENCENT_REGION }}
+          role-arn: ${{ secrets.TENCENT_ROLE_TO_ASSUME }}
+          oidc-provider-id: ${{ secrets.TENCENT_OIDC_PROVIDER_ID }}
