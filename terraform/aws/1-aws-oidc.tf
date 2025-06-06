@@ -64,5 +64,6 @@ resource "aws_iam_role" "github_oidc_roles" {
   for_each = local.flattened_roles
 
   name = "${each.key}-role"
+  description = "IAM role for GitHub Actions workflow ${each.key}"
   assume_role_policy = data.aws_iam_policy_document.github_oidc[each.key].json
 }

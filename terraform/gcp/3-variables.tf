@@ -1,15 +1,15 @@
 variable "gcp_credentials_file_path" {
-    description = "The path to the GCP credentials file"
+    description = "Path to the GCP credentials file"
     type        = string
 }
 
 variable "gcp_project_id" {
-    description = "The GCP project ID"
+    description = "GCP project ID"
     type        = string
 }
 
 variable "gcp_region" {
-    description = "The GCP region"
+    description = "GCP region"
     type        = string
 }
 
