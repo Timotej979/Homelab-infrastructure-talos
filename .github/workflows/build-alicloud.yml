@@ -39,6 +39,7 @@ jobs:
         id: alicloud-configure-credentials
         uses: aliyun/configure-aliyun-credentials-action@v1.0.7
         with:
+          audience: sts.aliyuncs.com
           role-to-assume: ${{ secrets.ALICLOUD_ROLE_TO_ASSUME }}
           oidc-provider-arn: ${{ secrets.ALICLOUD_OIDC_PROVIDER_ARN }}
 

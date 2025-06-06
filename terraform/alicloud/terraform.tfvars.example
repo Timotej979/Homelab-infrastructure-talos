@@ -1,8 +1,5 @@
-azure_subscription_id = "your-azure-subscription-id"
-azure_tenant_id       = "your-azure-tenant-id"
-azure_client_id       = "your-azure-client-id"
-azure_client_secret   = "your-azure-client-secret"    # pragma: allowlist secret
-azure_region          = "your-azure-region" 
+alicloud_profile = "your-alicloud-profile"
+alicloud_region  = "your-alicloud-region"
 
 workload_identity_providers_config = {
     packer = {
@@ -11,7 +8,7 @@ workload_identity_providers_config = {
         repository_claim    = "Timotej979/Homelab-infrastructure-talos"
         ref_claim           = "refs/heads/main"
         workflow_ref_claims = [
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-azure.yml@refs/heads/main",
+            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-alicloud.yml@refs/heads/main",
         ]
     }
     terragrunt = {
