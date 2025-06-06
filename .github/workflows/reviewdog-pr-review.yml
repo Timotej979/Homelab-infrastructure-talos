@@ -3,8 +3,6 @@ name: Reviewdog PR Review
 on:
   pull_request:
     branches: [main, stage, dev]
-  push:
-    branches: [main, stage, dev]
 
 permissions:
   contents: read
