@@ -1,5 +1,5 @@
 tencent_secret_id  = "your-tencent-secret-id"
-tencent_secret_key = "your-tencent-secret-key"
+tencent_secret_key = "your-tencent-secret-key"    # pragma: allowlist secret
 tencent_region     = "your-tencent-region"
 
 workload_identity_providers_config = {
