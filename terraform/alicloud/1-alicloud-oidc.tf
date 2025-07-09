@@ -54,8 +54,8 @@ data "alicloud_ram_policy_document" "github_oidc" {
 # Define RAM roles for GitHub Actions workflows
 resource "alicloud_ram_role" "github_oidc_roles" {
     for_each = local.flattened_roles
-    name        = "${each.key}-role"
+    role_name   = "${each.key}-role"
     description = "RAM role for GitHub Actions workflow ${each.key}"
-    document    = data.alicloud_ram_policy_document.github_oidc[each.key].json
+    assume_role_policy_document = data.alicloud_ram_policy_document.github_oidc[each.key].json
     force       = true
 }

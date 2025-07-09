@@ -16,46 +16,48 @@ locals {
     ]...)
 }
 
+# Fetch GitHub OIDC key
+data "external" "github_oidc_key" {
+  program = ["bash", "${path.module}/fetch_github_oidc_key.sh"]
+}
+
 # Define an OIDC provider for GitHub Actions
-resource "tencentcloud_cam_oidc_provider" "github" {
-    name        = "github-actions"
-    description = "OIDC provider for GitHub Actions"
-    url         = "https://token.actions.githubusercontent.com"
-    identity_url = "https://token.actions.githubusercontent.com"
-    client_id_list = ["sts.tencentcloudapi.com"]
+resource "tencentcloud_cam_oidc_sso" "github" {
+  authorization_endpoint = "https://token.actions.githubusercontent.com"
+  identity_url           = "https://token.actions.githubusercontent.com"
+  client_id              = "sts.tencentcloudapi.com"
+
+  response_type = "id_token"
+  response_mode = "form_post"
+
+  identity_key  = data.external.github_key.result.github_oidc_base64_key
+  mapping_filed = "sub"
+  scope         = ["openid"]
 }
 
-# Trust policy documents for each GitHub workflow
-data "tencentcloud_cam_role_policy_document" "github_oidc" {
-    for_each = local.flattened_roles
+resource "tencentcloud_cam_role" "github_roles" {
+  for_each = local.flattened_roles
 
-    statement {
-        effect = "Allow"
-        action = ["name/sts:AssumeRoleWithOIDC"]
-
-        principal {
-            type        = "Federated"
-            identifiers = [tencentcloud_cam_oidc_provider.github.id]
+  name        = "${each.key}-role"
+  description = "OIDC CAM role for ${each.key}"
+  document    = jsonencode({
+    version = "2.0"
+    statement = [
+      {
+        effect   = "Allow"
+        action   = ["name/sts:AssumeRoleWithOIDC"]
+        principal = {
+          federated = tencentcloud_cam_oidc_sso.github.id
         }
-
-        condition {
-            test     = "StringEquals"
-            variable = "token.actions.githubusercontent.com:aud"
-            values   = ["sts.tencentcloudapi.com"]
+        condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.tencentcloudapi.com"
+          }
+          StringLike = {
+            "token.actions.githubusercontent.com:sub" = "repo:${each.value.repository_claim}:ref:${each.value.ref_claim}:workflow:${each.value.workflow_file}"
+          }
         }
-
-        condition {
-            test     = "StringLike"
-            variable = "token.actions.githubusercontent.com:sub"
-            values   = ["repo:${each.value.repository_claim}:ref:${each.value.ref_claim}:workflow:${each.value.workflow_file}"]
-        }
-    }
-}
-
-# Role definitions
-resource "tencentcloud_cam_role" "github_oidc_roles" {
-    for_each = local.flattened_roles
-    name        = "${each.key}-role"
-    description = "CAM role for GitHub Actions workflow ${each.key}"
-    document    = data.tencentcloud_cam_role_policy_document.github_oidc[each.key].json
+      }
+    ]
+  })
 }
