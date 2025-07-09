@@ -33,6 +33,8 @@ resource "tencentcloud_cam_oidc_sso" "github" {
   identity_key  = data.external.github_key.result.github_oidc_base64_key
   mapping_filed = "sub"
   scope         = ["openid"]
+
+  depends_on = [ data.external.github_oidc_key ]
 }
 
 resource "tencentcloud_cam_role" "github_roles" {

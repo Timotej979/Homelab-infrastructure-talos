@@ -6,6 +6,10 @@ terraform {
             source  = "tencentcloudstack/tencentcloud"
             version = ">= 1.81.198"
         }
+        external = {
+            source  = "hashicorp/external"
+            version = ">= 2.3.0"
+        }
     }
 }
 
