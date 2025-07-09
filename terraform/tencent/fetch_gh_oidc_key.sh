@@ -1,5 +1,4 @@
-#!/bin/bash
-set -euo pipefail
+#!/bin/sh
 
 # 1. Fetch JWKS JSON
 JWK_JSON=$(curl -s https://token.actions.githubusercontent.com/.well-known/jwks) || {
