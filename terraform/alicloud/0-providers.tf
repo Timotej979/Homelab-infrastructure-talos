@@ -6,6 +6,10 @@ terraform {
             source  = "aliyun/alicloud"
             version = ">= 1.250.0"
         }
+        external = {
+            source  = "hashicorp/external"
+            version = ">= 2.3.0"
+        }
     }
 }
 
