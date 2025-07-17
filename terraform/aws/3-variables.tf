@@ -1,11 +1,13 @@
 variable "aws_profile" {
     description = "AWS CLI profile"
     type        = string
+    default     = "terraform"
 }
 
 variable "aws_region" {
     description = "AWS region"
     type        = string
+    default     = "eu-central-1"
 }
 
 variable "workload_identity_providers_config" {
@@ -19,7 +21,7 @@ variable "workload_identity_providers_config" {
     }))
     default = {
         packer = {
-            name                = "packer-gh-actions"
+            name                = "packer-github"
             actor_claim         = "Timotej979"
             repository_claim    = "Timotej979/Homelab-infrastructure-talos"
             ref_claim           = "refs/heads/main"

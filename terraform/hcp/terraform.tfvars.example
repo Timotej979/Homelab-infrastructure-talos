@@ -3,29 +3,29 @@ hcp_client_secret = "your-hcp-client-secret"    # pragma: allowlist secret
 hcp_project_id    = "your-hcp-project-id"
 
 workload_identity_providers_config = {
-    packer = {
-        name                = "packer-gh-actions"
+    packer-aws-azure-gcp = {
+        name                = "packer-aws-azure-gcp-github"
+        actor_claim         = "Timotej979"
+        repository_claim    = "Timotej979/Homelab-infrastructure-talos"
+        ref_claim           = "refs/heads/main"
+        workflow_ref_claims = [
+            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main",
+            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-azure.yml@refs/heads/main",
+            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-gcp.yml@refs/heads/main",
+        ]
+    }
+    packer-alicloud-tencent = {
+        name                = "packer-alicloud-tencent-github"
         actor_claim         = "Timotej979"
         repository_claim    = "Timotej979/Homelab-infrastructure-talos"
         ref_claim           = "refs/heads/main"
         workflow_ref_claims = [
             "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-alicloud.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-azure.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-digital-ocean.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-gcp.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-hetzner.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-huawei.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-ibm.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-linode.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-oci.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-ovh.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-tencent.yml@refs/heads/main",
-            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-vultr.yml@refs/heads/main"
+            "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-tencent.yml@refs/heads/main"
         ]
     }
     terragrunt = {
-        name                = "terragrunt-gh-actions"
+        name                = "terragrunt-github"
         actor_claim         = "Timotej979"
         repository_claim    = "Timotej979/Homelab-infrastructure-terragrunt"
         ref_claim           = "refs/heads/main"

@@ -1,9 +1,14 @@
+# Fetch the HCP project details
+data "hcp_project" "this" {
+  project = "project/${var.hcp_project_id}"
+}
+
 # Define the service principal (replace if one already exists)
 resource "hcp_service_principal" "oidc_deployment_sp" {
     for_each = var.workload_identity_providers_config
 
     name = each.value.name
-    parent = "projects/${var.hcp_project_id}"
+    parent = data.hcp_project.this.resource_name
 }
 
 # Create workload identity provider for GitHub Actions
@@ -19,11 +24,8 @@ resource "hcp_iam_workload_identity_provider" "github_wip" {
     }
 
     conditional_access = <<EOT
-        jwt.actor == "${each.value.actor_claim}" and
-        jwt_claims.repository == "${each.value.repository_claim}" and
-        jwt_claims.ref == "${each.value.ref_claim}" and
-        jwt_claims.workflow_ref in [
-            ${join(", ", [for ref in each.value.workflow_ref_claims : "\"${ref}\""])}
-        ]
+        jwt.claim["actor"] == "${each.value.actor_claim}" and
+        jwt.claim["repository"] == "${each.value.repository_claim}" and
+        jwt.claim["ref"] == "${each.value.ref_claim}"
     EOT
 }

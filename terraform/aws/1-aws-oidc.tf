@@ -7,7 +7,7 @@ locals {
                 actor_claim      = config.actor_claim
                 repository_claim = config.repository_claim
                 ref_claim        = config.ref_claim
-                workflow_file    = split("/", split("@", workflow_ref)[0])[3]
+                workflow_file = basename(split("@", workflow_ref)[0])
             }
         }
     }

@@ -1,3 +1,21 @@
+# Define a local map for all the role definitions 
+locals {
+  flattened_oidc_credentials = merge([
+    for key, config in var.workload_identity_providers_config : {
+      for workflow_ref in config.workflow_ref_claims : 
+      "${key}-${replace(basename(workflow_ref), ".", "-")}" => {
+        identity_key       = key
+        name               = config.name
+        actor_claim        = config.actor_claim
+        repository_claim   = config.repository_claim
+        ref_claim          = config.ref_claim
+        workflow_ref       = workflow_ref
+        workflow_file      = basename(split("@", workflow_ref)[0])
+      }
+    }
+  ]...)
+}
+
 # Define the resource group for OIDC identities
 resource "azurerm_resource_group" "oidc" {
     name     = "rg-oidc-identities"
@@ -22,22 +40,12 @@ resource "azurerm_role_assignment" "role" {
 
 # Define Federated Identity Credentials for OIDC
 resource "azurerm_federated_identity_credential" "fid" {
-    for_each = {
-        for repo_key, cfg in var.workload_identity_providers_config :
-        repo_key => [
-            for workflow_ref in length(cfg.workflow_ref_claims) > 0 ? cfg.workflow_ref_claims : [cfg.repository_claim] :
-            {
-                name                = "fid-${repo_key}-${replace(replace(workflow_ref, "/", "-"), "@", "-")}"
-                subject             = "repo:${cfg.repository_claim}:ref:${cfg.ref_claim}${length(cfg.workflow_ref_claims) > 0 ? ":workflow:${element(split("@", workflow_ref), 0)}" : ""}"
-                identity_key        = repo_key
-            }
-        ]
-    }
+  for_each = local.flattened_oidc_credentials
 
-    name                = each.value.name
-    resource_group_name = azurerm_resource_group.oidc.name
-    parent_id           = azurerm_user_assigned_identity.oidc_identity[each.value.identity_key].id
-    audience            = ["api://AzureADTokenExchange"]
-    issuer              = "https://token.actions.githubusercontent.com"
-    subject             = each.value.subject
+  name                = "fid-${each.key}"
+  resource_group_name = azurerm_resource_group.oidc.name
+  parent_id           = azurerm_user_assigned_identity.oidc_identity[each.value.identity_key].id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${each.value.repository_claim}:ref:${each.value.ref_claim}:workflow:${each.value.workflow_file}"
 }

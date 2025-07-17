@@ -1,12 +1,9 @@
 azure_subscription_id = "your-azure-subscription-id"
-azure_tenant_id       = "your-azure-tenant-id"
-azure_client_id       = "your-azure-client-id"
-azure_client_secret   = "your-azure-client-secret"    # pragma: allowlist secret
 azure_region          = "your-azure-region" 
 
 workload_identity_providers_config = {
     packer = {
-        name                = "packer-gh-actions"
+        name                = "packer-github"
         actor_claim         = "Timotej979"
         repository_claim    = "Timotej979/Homelab-infrastructure-talos"
         ref_claim           = "refs/heads/main"
@@ -15,7 +12,7 @@ workload_identity_providers_config = {
         ]
     }
     terragrunt = {
-        name                = "terragrunt-gh-actions"
+        name                = "terragrunt-github"
         actor_claim         = "Timotej979"
         repository_claim    = "Timotej979/Homelab-infrastructure-terragrunt"
         ref_claim           = "refs/heads/main"

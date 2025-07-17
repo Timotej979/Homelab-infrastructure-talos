@@ -1,11 +1,13 @@
 variable "alicloud_profile" {
     description = "Alicloud CLI profile"
     type        = string
+    default     = "terraform"
 }
 
 variable "alicloud_region" {
     description = "Alicloud region"
     type        = string
+    default     = "eu-central-1"
 }
 
 variable "workload_identity_providers_config" {
@@ -19,7 +21,7 @@ variable "workload_identity_providers_config" {
     }))
     default = {
         packer = {
-            name                = "packer-gh-actions"
+            name                = "packer-github"
             actor_claim         = "Timotej979"
             repository_claim    = "Timotej979/Homelab-infrastructure-talos"
             ref_claim           = "refs/heads/main"
@@ -28,7 +30,7 @@ variable "workload_identity_providers_config" {
             ]
         }
         # terragrunt = {
-        #     name             = "terragrunt-gh-actions"
+        #     name             = "terragrunt-github"
         #     actor_claim      = "Timotej979"
         #     repository_claim = "Timotej979/Homelab-infrastructure-terragrunt"
         #     ref_claim        = "refs/heads/main"

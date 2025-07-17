@@ -3,23 +3,6 @@ variable "azure_subscription_id" {
     type        = string
 }
 
-variable "azure_tenant_id" {
-    description = "Azure tenant ID"
-    type        = string
-}
-
-variable "azure_client_id" {
-    description = "Azure client ID"
-    type        = string
-    sensitive   = true
-}
-
-variable "azure_client_secret" {
-    description = "Azure client secret"
-    type        = string
-    sensitive   = true
-}
-
 variable "azure_region" {
     description = "Azure region"
     type = string
@@ -36,7 +19,7 @@ variable "workload_identity_providers_config" {
     }))
     default     = {
         packer = {
-            name                = "packer-gh-actions"
+            name                = "packer-github"
             actor_claim         = "Timotej979"
             repository_claim    = "Timotej979/Homelab-infrastructure-talos"
             ref_claim           = "refs/heads/main"
@@ -45,7 +28,7 @@ variable "workload_identity_providers_config" {
             ]
         }
         # terragrunt = {
-        #     name             = "terragrunt-gh-actions"
+        #     name             = "terragrunt-github"
         #     actor_claim      = "Timotej979"
         #     repository_claim = "Timotej979/Homelab-infrastructure-terragrunt"
         #     ref_claim        = "refs/heads/main"

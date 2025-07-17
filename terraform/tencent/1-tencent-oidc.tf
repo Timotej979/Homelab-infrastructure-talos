@@ -18,7 +18,7 @@ locals {
 
 # Fetch GitHub OIDC key
 data "external" "github_oidc_key" {
-  program = ["bash", "${path.module}/fetch_github_oidc_key.sh"]
+  program = ["bash", "${path.module}/fetch_gh_oidc_key.sh"]
 }
 
 # Define an OIDC provider for GitHub Actions

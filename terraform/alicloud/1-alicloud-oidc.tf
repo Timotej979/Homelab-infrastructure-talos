@@ -16,12 +16,18 @@ locals {
     ]...)
 }
 
+# Fetch GitHub OIDC key
+data "external" "github_oidc_key" {
+  program = ["bash", "${path.module}/fetch_gh_oidc_key.sh"]
+}
+
 # Define an OIDC provider for GitHub Actions
 resource "alicloud_ims_oidc_provider" "github" {
     oidc_provider_name  = "github-actions"
     description         = "OIDC provider for GitHub Actions"
     issuer_url          = "https://token.actions.githubusercontent.com"
     client_ids          = ["sts.aliyuncs.com"]
+    fingerprints        = [data.external.github_oidc_key.result["fingerprints"]]
 }
 
 # Define the RAM policy document for GitHub OIDC roles
@@ -56,6 +62,6 @@ resource "alicloud_ram_role" "github_oidc_roles" {
     for_each = local.flattened_roles
     role_name   = "${each.key}-role"
     description = "RAM role for GitHub Actions workflow ${each.key}"
-    assume_role_policy_document = data.alicloud_ram_policy_document.github_oidc[each.key].json
+    assume_role_policy_document = data.alicloud_ram_policy_document.github_oidc[each.key].document
     force       = true
 }

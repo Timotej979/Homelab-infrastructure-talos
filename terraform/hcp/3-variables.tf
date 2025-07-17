@@ -26,32 +26,29 @@ variable "workload_identity_providers_config" {
         workflow_ref_claims = list(string)
     }))
     default     = {
-        packer = {
-            name                = "packer-gh-actions"
+        packer-aws-azure-gcp = {
+            name                = "packer-aws-azure-gcp-github"
             actor_claim         = "Timotej979"
             repository_claim    = "Timotej979/Homelab-infrastructure-talos"
             ref_claim           = "refs/heads/main"
             workflow_ref_claims = [
-                for workflow_name in [
-                    "build-all.yml",
-                    "build-alicloud.yml",
-                    "build-aws.yml",
-                    "build-azure.yml",
-                    "build-digital-ocean.yml",
-                    "build-gcp.yml",
-                    "build-hetzner.yml",
-                    "build-huawei.yml",
-                    "build-ibm.yml",
-                    "build-linode.yml",
-                    "build-oci.yml",
-                    "build-ovh.yml",
-                    "build-tencent.yml",
-                    "build-vultr.yml"
-                ] : "Timotej979/Homelab-infrastructure-talos/.github/workflows/${workflow_name}@refs/heads/main"
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main",
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-azure.yml@refs/heads/main",
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-gcp.yml@refs/heads/main",
+            ]
+        }
+        packer-alicloud-tencent = {
+            name                = "packer-alicloud-tencent-github"
+            actor_claim         = "Timotej979"
+            repository_claim    = "Timotej979/Homelab-infrastructure-talos"
+            ref_claim           = "refs/heads/main"
+            workflow_ref_claims = [
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-alicloud.yml@refs/heads/main",
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-tencent.yml@refs/heads/main"
             ]
         }
         # terragrunt = {
-        #     name             = "terragrunt-gh-actions"
+        #     name             = "terragrunt-github"
         #     actor_claim      = "Timotej979"
         #     repository_claim = "Timotej979/Homelab-infrastructure-terragrunt"
         #     ref_claim        = "refs/heads/main"
