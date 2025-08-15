@@ -6,22 +6,11 @@ ORANGE='\033[38;5;208m' # Bright orange
 RED='\033[38;5;196m'    # Bright red
 RESET='\033[0m'         # Reset to default color
 
-# Logging functions for colored messages
-log_success() {
-    printf "${GREEN}[SUCCESS] %s${RESET}\n" "$1"
-}
-
-log_warning() {
-    printf "${ORANGE}[WARNING] %s${ORANGE}\n" "$1"
-}
-
-log_error() {
-    printf "${RED}[ERROR] %s${RESET}\n" "$1"
-}
-
-log_info() {
-    printf "[INFO] %s\n" "$1"
-}
+# Logging functions for colored messages to stderr (data external provider in packer limitation)
+log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n" "$1" >&2; }
+log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1" >&2; }
+log_error()   { printf "${RED}[ERROR] %s${RESET}\n" "$1" >&2; }
+log_info()    { printf "[INFO] %s\n" "$1" >&2; }
 
 # Help function to display usage
 show_help() {
@@ -166,3 +155,9 @@ generate_image_schematic
 
 # Fetch the image from the Talos Factory API
 fetch_image_from_talos_factory
+
+# Output the results for the Talos image
+jq -n \
+  --arg version "$TALOS_VERSION" \
+  --arg schematic_id "$TALOS_SCHEMATIC_ID" \
+  '{talos_version: $version, schematic_id: $schematic_id}'

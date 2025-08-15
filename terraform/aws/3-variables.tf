@@ -13,28 +13,43 @@ variable "aws_region" {
 variable "workload_identity_providers_config" {
     description = "OIDC GitHub configurations"
     type = map(object({
-        name                = string
-        actor_claim         = string
-        repository_claim    = string
-        ref_claim           = string
-        workflow_ref_claims = list(string)
+        name                       = string
+        actor_claim                = string
+        repository_claim           = string
+        ref_claim                  = string
+        allowed_ec2_instance_types = list(string)
+        workflow_ref_claims        = list(string)
     }))
     default = {
-        packer = {
-            name                = "packer-github"
-            actor_claim         = "Timotej979"
-            repository_claim    = "Timotej979/Homelab-infrastructure-talos"
-            ref_claim           = "refs/heads/main"
-            workflow_ref_claims = [
+        packer-prod-gh = {
+            name                       = "packer-prod-gh"
+            actor_claim                = "Timotej979"
+            repository_claim           = "Timotej979/Homelab-infrastructure-talos"
+            ref_claim                  = "refs/heads/main"
+            allowed_ec2_instance_types = ["t4g.medium"]
+            workflow_ref_claims        = [
                 "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main"
             ]
         }
-        # terragrunt = {
-        #     name             = "terragrunt-gh-actions"
-        #     actor_claim      = "Timotej979"
-        #     repository_claim = "Timotej979/Homelab-infrastructure-terragrunt"
-        #     ref_claim        = "refs/heads/main"
-        #     workflow_ref_claims = []
-        # }
+        packer-stage-gh = {
+            name                       = "packer-stage-gh"
+            actor_claim                = "Timotej979"
+            repository_claim           = "Timotej979/Homelab-infrastructure-talos"
+            ref_claim                  = "refs/heads/stage"
+            allowed_ec2_instance_types = ["t4g.medium"]
+            workflow_ref_claims        = [
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/stage"
+            ]
+        }
+        packer-dev-gh = {
+            name                       = "packer-dev-gh"
+            actor_claim                = "Timotej979"
+            repository_claim           = "Timotej979/Homelab-infrastructure-talos"
+            ref_claim                  = "refs/heads/dev"
+            allowed_ec2_instance_types = ["t4g.medium"]
+            workflow_ref_claims        = [
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/dev"
+            ]
+        }
     }
 }
