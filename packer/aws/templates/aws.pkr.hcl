@@ -26,7 +26,7 @@ variable "aws_instance_type" {
 
 #############################################
 data "external" "talos_info" {
-  program = ["bash", "${path.root}/../scripts/talos-info.sh"]
+  program = ["bash", "${path.root}/../scripts/install-talos.sh"]
 }
 
 #############################################

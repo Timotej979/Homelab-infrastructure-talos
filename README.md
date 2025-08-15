@@ -46,41 +46,6 @@
   </a>
 </p>
 
-<br>
-
-<p align="center">
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-hetzner.yml/badge.svg?branch=main" alt="Build Hetzner">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-linode.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-linode.yml/badge.svg?branch=main" alt="Build Linode">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-digital-ocean.yml/badge.svg?branch=main" alt="Build Digital Ocean">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-huawei.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-huawei.yml/badge.svg?branch=main" alt="Build Huawei">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ibm.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ibm.yml/badge.svg?branch=main" alt="Build IBM">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-oci.yml/badge.svg?branch=main" alt="Build Oracle Cloud">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ovh.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-ovh.yml/badge.svg?branch=main" alt="Build OVH">
-  </a>
-  <a href="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-vultr.yml">
-    <img src="https://github.com/Timotej979/Homelab-infrastructure-talos/actions/workflows/build-vultr.yml/badge.svg?branch=main" alt="Build Vultr">
-  </a>
-</p>
-
 ---
 
 This repository is a collection of independently-versioned packer release processes for machine images of Talos OS for various platforms. The packer configurations are designed to be run in a CI/CD pipeline to build and release new versions of Talos OS images on a regular basis.
@@ -208,14 +173,5 @@ Currently the following platforms and architectures are supported or rather bein
 - [x] AliCloud (amd64/arm64)
 - [x] AWS (amd64/arm64)
 - [x] Azure (amd64/arm64)
-- [x] Bare-metal (amd64)
-- [x] DigitalOcean (amd64)
 - [x] GCP (amd64/arm64)
-- [x] Hetzner (amd64)
-- [x] Huawei Cloud (amd64/arm64)
-- [x] IBM Cloud (amd64)
-- [x] Akamai/Linode (amd64)
-- [x] Oracle Cloud (amd64/arm64)
-- [x] OVH Cloud (amd64)
 - [x] Tencent Cloud (amd64)
-- [x] Vultr (amd64)
