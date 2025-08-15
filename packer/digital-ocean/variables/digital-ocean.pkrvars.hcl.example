@@ -1,2 +1,0 @@
-do_region       = "fra1"
-do_droplet_size = "s-4vcpu-8gb"
