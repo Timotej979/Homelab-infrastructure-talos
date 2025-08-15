@@ -64,26 +64,73 @@ data "aws_iam_policy_document" "github_oidc" {
 # -------------------------------------------------
 # Minimal Packer Talos policy for Packer Talos
 # -------------------------------------------------
+data "aws_caller_identity" "current" {}
+
 data "aws_iam_policy_document" "packer_talos" {
-  # Describe calls - still global
+  #########################
+  # Describe Instances
+  #########################
   statement {
     effect = "Allow"
     actions = [
       "ec2:DescribeInstances",
-      "ec2:DescribeInstanceStatus",
+      "ec2:DescribeInstanceStatus"
+    ]
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"
+    ]
+  }
+
+  #########################
+  # Describe AMIs
+  #########################
+  statement {
+    effect = "Allow"
+    actions = [
       "ec2:DescribeImages",
-      "ec2:DescribeImageAttribute",
+      "ec2:DescribeImageAttribute"
+    ]
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:image/*"
+    ]
+  }
+
+  #########################
+  # Describe Snapshots
+  #########################
+  statement {
+    effect = "Allow"
+    actions = [
       "ec2:DescribeSnapshots",
-      "ec2:DescribeSnapshotAttribute",
+      "ec2:DescribeSnapshotAttribute"
+    ]
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot/*"
+    ]
+  }
+
+  #########################
+  # Describe VPCs/Subnets/SGs/KeyPairs
+  #########################
+  statement {
+    effect = "Allow"
+    actions = [
       "ec2:DescribeVpcs",
       "ec2:DescribeSubnets",
       "ec2:DescribeSecurityGroups",
       "ec2:DescribeKeyPairs"
     ]
-    resources = ["*"]
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key-pair/*",
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:security-group/*",
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:subnet/*",
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:vpc/*"
+    ]
   }
 
-  # Run and terminate instances in eu-central-1, only t4g.medium
+  #########################
+  # EC2 instance operations
+  #########################
   statement {
     effect = "Allow"
     actions = [
@@ -92,14 +139,14 @@ data "aws_iam_policy_document" "packer_talos" {
       "ec2:StopInstances",
       "ec2:StartInstances"
     ]
-    resources = ["*"]
-
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"
+    ]
     condition {
       test     = "StringEquals"
       variable = "aws:RequestedRegion"
       values   = [var.aws_region]
     }
-
     condition {
       test     = "StringEquals"
       variable = "ec2:InstanceType"
@@ -107,7 +154,9 @@ data "aws_iam_policy_document" "packer_talos" {
     }
   }
 
-  # Temporary SG creation/deletion in eu-central-1
+  #########################
+  # Security group operations
+  #########################
   statement {
     effect = "Allow"
     actions = [
@@ -116,8 +165,9 @@ data "aws_iam_policy_document" "packer_talos" {
       "ec2:AuthorizeSecurityGroupIngress",
       "ec2:RevokeSecurityGroupIngress"
     ]
-    resources = ["*"]
-
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:security-group/*"
+    ]
     condition {
       test     = "StringEquals"
       variable = "aws:RequestedRegion"
@@ -125,7 +175,9 @@ data "aws_iam_policy_document" "packer_talos" {
     }
   }
 
-  # AMI and snapshot management - only for Talos AMIs
+  #########################
+  # AMI operations
+  #########################
   statement {
     effect = "Allow"
     actions = [
@@ -133,21 +185,39 @@ data "aws_iam_policy_document" "packer_talos" {
       "ec2:RegisterImage",
       "ec2:DeregisterImage",
       "ec2:ModifyImageAttribute",
+      "ec2:CreateTags",
+      "ec2:DeleteTags"
+    ]
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:image/*"
+    ]
+    condition {
+      test     = "StringLike"
+      variable = "ec2:ImageName"
+      values   = ["talos-system-disk-*"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = [var.aws_region]
+    }
+  }
+
+  #########################
+  # Snapshot operations
+  #########################
+  statement {
+    effect = "Allow"
+    actions = [
       "ec2:CreateSnapshot",
       "ec2:DeleteSnapshot",
       "ec2:ModifySnapshotAttribute",
       "ec2:CreateTags",
       "ec2:DeleteTags"
     ]
-    resources = ["*"]
-
-    # Only allow AMI names starting with talos-system-disk-
-    condition {
-      test     = "StringLike"
-      variable = "ec2:ImageName"
-      values   = ["talos-system-disk-*"]
-    }
-
+    resources = [
+      "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot/*"
+    ]
     condition {
       test     = "StringEquals"
       variable = "aws:RequestedRegion"
