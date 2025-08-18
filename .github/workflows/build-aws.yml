@@ -37,9 +37,6 @@ jobs:
           echo "[INFO] Decoded JWT claims:"
           echo "$PAYLOAD" | base64 --decode | jq .
 
-          # Optional: export for later steps
-          echo "ID_TOKEN=$ID_TOKEN" >> $GITHUB_ENV
-
         env:
           ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
           ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
