@@ -24,7 +24,7 @@ jobs:
       - name: Configure HCP Credentials
         uses: hashicorp/hcp-auth-action@v0.1.0
         with:
-          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP_DEV }}
+          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
 
       - name: Install HCP CLI
         uses: hashicorp/hcp-setup-action@v0.1.0
@@ -41,8 +41,8 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4.3.1
         with:
           audience: sts.amazonaws.com
-          aws-region: ${{ secrets.AWS_REGION_DEV }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
 
       - name: Build Development Image
         working-directory: ./packer/aws/templates
@@ -83,7 +83,7 @@ jobs:
       - name: Configure HCP Credentials
         uses: hashicorp/hcp-auth-action@v0.1.0
         with:
-          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP_STAGING }}
+          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
 
       - name: Install HCP CLI
         uses: hashicorp/hcp-setup-action@v0.1.0
@@ -100,8 +100,8 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4.3.1
         with:
           audience: sts.amazonaws.com
-          aws-region: ${{ secrets.AWS_REGION_STAGING }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_STAGING }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
 
       - name: Build Staging Image
         working-directory: ./packer/aws/templates
