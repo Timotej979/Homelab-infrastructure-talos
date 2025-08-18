@@ -13,17 +13,48 @@ env:
   PACKER_VERSION: "1.12.0"
 
 jobs:
-  build:
-    name: Build AWS Image
+  setup-logging:
+    name: Setup Logging Functions
     runs-on: ubuntu-24.04
+    outputs:
+      logging-file: ${{ steps.save-logging.outputs.file }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Save logging functions to file
+        id: save-logging
+        run: |
+          LOG_FILE="logging.sh"
+          cat << 'EOF' > $LOG_FILE
+          GREEN='\033[38;5;82m'
+          ORANGE='\033[38;5;208m'
+          RED='\033[38;5;196m'
+          RESET='\033[0m'
+
+          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
+          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
+          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
+          log_info() { printf "[INFO] %s\n" "$1"; }
+          EOF
+          echo "file=$LOG_FILE" >> $GITHUB_OUTPUT
+
+  dev:
+    name: Build Development AWS Image
+    runs-on: ubuntu-24.04
+    needs: setup-logging
+    environment: Development
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Source logging functions
+        run: source ${{ needs.setup-logging.outputs.logging-file }}
+
       - name: Configure HCP Credentials
         uses: hashicorp/hcp-auth-action@v0.1.0
         with:
-          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
+          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP_DEV }}
 
       - name: Install HCP CLI
         uses: hashicorp/hcp-setup-action@v0.1.0
@@ -35,55 +66,132 @@ jobs:
         with:
           version: ${{ env.PACKER_VERSION }}
 
-      - name: Configure AWS Credentials for China region audience
+      - name: Configure AWS Credentials
         id: aws-configure-credentials
         uses: aws-actions/configure-aws-credentials@v4.3.1
         with:
           audience: sts.amazonaws.com
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION_DEV }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
 
-      - name: Build Image
+      - name: Build Development Image
         working-directory: ./packer/aws/templates
         run: |
-          # Define colors for logging
-          GREEN='\033[38;5;82m'   # Bright green
-          ORANGE='\033[38;5;208m' # Bright orange
-          RED='\033[38;5;196m'    # Bright red
-          RESET='\033[0m'         # Reset to default color
-
-          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
-          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
-          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
-          log_info() { printf "[INFO] %s\n" "$1"; }
-
-          # Configure AWS credentials
           log_info "Configuring AWS credentials..."
-          export AWS_ACCESS_KEY_ID="${{ steps.aws-configure-credentials.outputs.aws-access-key-id }}" || {
-            log_error "Failed to configure AWS credentials!"
-            exit 1
-          }
-          export AWS_SECRET_ACCESS_KEY="${{ steps.aws-configure-credentials.outputs.aws-secret-access-key }}" || {
-            log_error "Failed to configure AWS credentials!"
-            exit 1
-          }
-          export AWS_SESSION_TOKEN="${{ steps.aws-configure-credentials.outputs.aws-session-token }}" || {
-            log_error "Failed to configure AWS credentials!"
-            exit 1
-          }
+          export AWS_ACCESS_KEY_ID="${{ steps.aws-configure-credentials.outputs.aws-access-key-id }}"
+          export AWS_SECRET_ACCESS_KEY="${{ steps.aws-configure-credentials.outputs.aws-secret-access-key }}"
+          export AWS_SESSION_TOKEN="${{ steps.aws-configure-credentials.outputs.aws-session-token }}"
           log_success "AWS credentials configured successfully."
 
-          # Run Packer
           log_info "Initializing Packer build..."
-          packer init ./aws.pkr.hcl || {
-            log_error "Failed to initialize Packer build!"
-            exit 1
-          }
+          packer init ./aws.pkr.hcl
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build ./aws.pkr.hcl || {
-            log_error "Failed to build AWS image!"
-            exit 1
-          }
+          packer build ./aws.pkr.hcl
+          log_success "AWS image built successfully."
+
+  staging:
+    name: Build Staging AWS Image
+    runs-on: ubuntu-24.04
+    needs: dev
+    environment: Staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Source logging functions
+        run: source ${{ needs.setup-logging.outputs.logging-file }}
+
+      - name: Configure HCP Credentials
+        uses: hashicorp/hcp-auth-action@v0.1.0
+        with:
+          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP_DEV }}
+
+      - name: Install HCP CLI
+        uses: hashicorp/hcp-setup-action@v0.1.0
+        with:
+          version: ${{ env.HCP_CLI_VERSION }}
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Configure AWS Credentials
+        id: aws-configure-credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          audience: sts.amazonaws.com
+          aws-region: ${{ secrets.AWS_REGION_DEV }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
+
+      - name: Build Development Image
+        working-directory: ./packer/aws/templates
+        run: |
+          log_info "Configuring AWS credentials..."
+          export AWS_ACCESS_KEY_ID="${{ steps.aws-configure-credentials.outputs.aws-access-key-id }}"
+          export AWS_SECRET_ACCESS_KEY="${{ steps.aws-configure-credentials.outputs.aws-secret-access-key }}"
+          export AWS_SESSION_TOKEN="${{ steps.aws-configure-credentials.outputs.aws-session-token }}"
+          log_success "AWS credentials configured successfully."
+
+          log_info "Initializing Packer build..."
+          packer init ./aws.pkr.hcl
+          log_success "Packer build initialized successfully."
+
+          log_info "Starting Packer build..."
+          packer build ./aws.pkr.hcl
+          log_success "AWS image built successfully."
+
+
+  prod:
+    name: Build Production AWS Image
+    runs-on: ubuntu-24.04
+    needs: staging
+    environment: Production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Source logging functions
+        run: source ${{ needs.setup-logging.outputs.logging-file }}
+
+      - name: Configure HCP Credentials
+        uses: hashicorp/hcp-auth-action@v0.1.0
+        with:
+          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP_DEV }}
+
+      - name: Install HCP CLI
+        uses: hashicorp/hcp-setup-action@v0.1.0
+        with:
+          version: ${{ env.HCP_CLI_VERSION }}
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Configure AWS Credentials
+        id: aws-configure-credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          audience: sts.amazonaws.com
+          aws-region: ${{ secrets.AWS_REGION_DEV }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV }}
+
+      - name: Build Development Image
+        working-directory: ./packer/aws/templates
+        run: |
+          log_info "Configuring AWS credentials..."
+          export AWS_ACCESS_KEY_ID="${{ steps.aws-configure-credentials.outputs.aws-access-key-id }}"
+          export AWS_SECRET_ACCESS_KEY="${{ steps.aws-configure-credentials.outputs.aws-secret-access-key }}"
+          export AWS_SESSION_TOKEN="${{ steps.aws-configure-credentials.outputs.aws-session-token }}"
+          log_success "AWS credentials configured successfully."
+
+          log_info "Initializing Packer build..."
+          packer init ./aws.pkr.hcl
+          log_success "Packer build initialized successfully."
+
+          log_info "Starting Packer build..."
+          packer build ./aws.pkr.hcl
           log_success "AWS image built successfully."
