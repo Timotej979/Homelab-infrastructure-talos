@@ -38,7 +38,7 @@ jobs:
           log_info() { printf "[INFO] %s\n" "$1"; }
           EOF
 
-          echo "logging-file=$LOG_FILE" >> "$GITHUB_OUTPUT"
+          echo "logging-file=$LOG_FILE" >> $GITHUB_OUTPUT
 
   dev:
     name: Build Development AWS Image
