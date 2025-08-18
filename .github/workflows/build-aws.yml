@@ -48,6 +48,8 @@ jobs:
         uses: hashicorp/hcp-auth-action@v0.1.0
         with:
           workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
+          set_access_token: false
+          export_environment_variables: true
 
       - name: Install HCP CLI
         uses: hashicorp/hcp-setup-action@v0.1.0
