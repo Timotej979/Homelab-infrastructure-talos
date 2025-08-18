@@ -1,14 +1,22 @@
 # Fetch the HCP project details
 data "hcp_project" "this" {
-  project = "project/${var.hcp_project_id}"
+  project = "${var.hcp_project_id}"
 }
 
 # Define the service principal (replace if one already exists)
 resource "hcp_service_principal" "oidc_deployment_sp" {
     for_each = var.workload_identity_providers_config
 
-    name = each.value.name
+    name   = each.value.name
     parent = data.hcp_project.this.resource_name
+}
+
+# Create a HCP project IAM role binding
+resource "hcp_project_iam_binding" "oidc_deployment_sp_binding" {
+    for_each = var.workload_identity_providers_config
+
+    principal_id = hcp_service_principal.oidc_deployment_sp[each.key].resource_id
+    role         = each.value.hcp_role
 }
 
 # Create workload identity provider for GitHub Actions

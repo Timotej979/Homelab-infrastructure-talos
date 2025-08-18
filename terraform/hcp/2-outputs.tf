@@ -1,11 +1,9 @@
-output "service_principal_name" {
-  value = [for sp in values(hcp_service_principal.oidc_deployment_sp) : sp.resource_name]
-}
-
-output "workload_identity_provider_id" {
-  value = [for wip in values(hcp_iam_workload_identity_provider.github_wip) : wip.resource_id]
-}
-
-output "workload_identity_provider_name" {
-  value = [for wip in values(hcp_iam_workload_identity_provider.github_wip) : wip.resource_name]
+output "hcp_oidc_auth" {
+  value = {
+    for k, sp in hcp_service_principal.oidc_deployment_sp :
+    k => {
+      service_principal          = sp.resource_name
+      workload_identity_provider = hcp_iam_workload_identity_provider.github_wip[k].resource_name
+    }
+  }
 }

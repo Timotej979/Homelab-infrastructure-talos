@@ -23,7 +23,7 @@ jobs:
       - name: Configure HCP Credentials
         uses: hashicorp/hcp-auth-action@v0.1.0
         with:
-          workload_identity_provider: ${{ secrets.HCP_WORKLOAD_IDENTITY_PROVIDER }}
+          workload_identity_provider: ${{ secrets.HCP_WIP_ALICLOUD_TENCENT }}
 
       - name: Install HCP CLI
         uses: hashicorp/hcp-setup-action@v0.1.0

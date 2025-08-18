@@ -57,16 +57,8 @@ jobs:
             { "name": "alicloud", "path": "build-alicloud.yml" },
             { "name": "aws", "path": "build-aws.yml" },
             { "name": "azure", "path": "build-azure.yml" },
-            { "name": "digital_ocean", "path": "build-digital-ocean.yml" },
             { "name": "gcp", "path": "build-gcp.yml" },
-            { "name": "hetzner", "path": "build-hetzner.yml" },
-            { "name": "huawei", "path": "build-huawei.yml" },
-            { "name": "ibm", "path": "build-ibm.yml" },
-            { "name": "linode", "path": "build-linode.yml" },
-            { "name": "oci", "path": "build-oci.yml" },
-            { "name": "ovh", "path": "build-ovh.yml" },
             { "name": "tencent", "path": "build-tencent.yml" },
-            { "name": "vultr", "path": "build-vultr.yml" }
           ]'
           log_success "Successfully defined all possible cloud images."
 
