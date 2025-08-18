@@ -1,6 +1,6 @@
 # Fetch the HCP project details
 data "hcp_project" "this" {
-  project = "${var.hcp_project_id}"
+  project = "project/${var.hcp_project_id}"
 }
 
 # Define the service principal (replace if one already exists)
