@@ -34,9 +34,9 @@ variable "workload_identity_providers_config" {
             ref_claim           = "refs/heads/main"
             hcp_role            = "roles/contributor"
             workflow_ref_claims = [
-                ".github/workflows/build-aws.yml",
-                ".github/workflows/build-azure.yml",
-                ".github/workflows/build-gcp.yml",
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main",
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-azure.yml@refs/heads/main",
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-gcp.yml@refs/heads/main",
             ]
         }
         packer-alicloud-tencent = {
@@ -46,8 +46,8 @@ variable "workload_identity_providers_config" {
             ref_claim           = "refs/heads/main"
             hcp_role            = "roles/contributor"
             workflow_ref_claims = [
-                ".github/workflows/build-alicloud.yml",
-                ".github/workflows/build-tencent.yml"
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-alicloud.yml@refs/heads/main",
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-tencent.yml@refs/heads/main"
             ]
         }
         # terragrunt = {

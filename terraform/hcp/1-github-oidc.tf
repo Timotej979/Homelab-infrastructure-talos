@@ -34,9 +34,6 @@ resource "hcp_iam_workload_identity_provider" "github_wip" {
     conditional_access = <<EOT
         jwt.claim["actor"] == "${each.value.actor_claim}" and
         jwt.claim["repository"] == "${each.value.repository_claim}" and
-        jwt.claim["sub"] != "" and
-        (
-        ${join(" or ", [for wf in each.value.workflow_ref_claims : "jwt.claim[\"workflow\"] == \"${wf}\""])}
-        )
+        jwt.claim["ref"] == "${each.value.ref_claim}"
     EOT
 }
