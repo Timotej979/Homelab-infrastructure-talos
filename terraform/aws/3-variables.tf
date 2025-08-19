@@ -28,7 +28,7 @@ variable "workload_identity_providers_config" {
             ref_claim                  = "refs/heads/main"
             allowed_ec2_instance_types = ["t4g.medium"]
             workflow_ref_claims        = [
-                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/main"
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build_aws.yml@refs/heads/main"
             ]
         }
         packer-stage-gh = {
@@ -38,7 +38,7 @@ variable "workload_identity_providers_config" {
             ref_claim                  = "refs/heads/stage"
             allowed_ec2_instance_types = ["t4g.medium"]
             workflow_ref_claims        = [
-                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/stage"
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build_aws.yml@refs/heads/stage"
             ]
         }
         packer-dev-gh = {
@@ -48,7 +48,7 @@ variable "workload_identity_providers_config" {
             ref_claim                  = "refs/heads/dev"
             allowed_ec2_instance_types = ["t4g.medium"]
             workflow_ref_claims        = [
-                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build-aws.yml@refs/heads/dev"
+                "Timotej979/Homelab-infrastructure-talos/.github/workflows/build_aws.yml@refs/heads/dev"
             ]
         }
     }
