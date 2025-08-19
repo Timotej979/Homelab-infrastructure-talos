@@ -22,26 +22,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Fetch and Decode GitHub OIDC Token
-        id: decode-oidc
-        run: |
-          echo "[INFO] Fetching OIDC token..."
-          ID_TOKEN=$(curl -s -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-                            "$ACTIONS_ID_TOKEN_REQUEST_URL")
-          echo "[INFO] Raw ID_TOKEN: $ID_TOKEN"
-
-          # Decode JWT payload
-          PAYLOAD=$(echo "$ID_TOKEN" | cut -d '.' -f2)
-          # Add padding if needed
-          PAD=$((4 - ${#PAYLOAD} % 4))
-          PAYLOAD="$PAYLOAD$(printf '=%.0s' $(seq 1 $PAD))"
-          echo "[INFO] Decoded JWT claims:"
-          echo "$PAYLOAD" | base64 --decode | jq .
-
-        env:
-          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
-          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
-
       - name: Configure HCP Credentials
         uses: hashicorp/hcp-auth-action@v0.1.0
         with:
@@ -58,6 +38,11 @@ jobs:
         uses: hashicorp/setup-packer@main
         with:
           version: ${{ env.PACKER_VERSION }}
+
+      - name: Debug OIDC Claims
+        uses: github/actions-oidc-debugger@main
+        with:
+          audience: '${{ github.server_url }}/${{ github.repository_owner }}'
 
       - name: Configure AWS Credentials
         id: aws-configure-credentials
@@ -116,6 +101,11 @@ jobs:
         uses: hashicorp/setup-packer@main
         with:
           version: ${{ env.PACKER_VERSION }}
+
+      - name: Debug OIDC Claims
+        uses: github/actions-oidc-debugger@main
+        with:
+          audience: '${{ github.server_url }}/${{ github.repository_owner }}'
 
       - name: Configure AWS Credentials
         id: aws-configure-credentials
@@ -176,6 +166,11 @@ jobs:
         uses: hashicorp/setup-packer@main
         with:
           version: ${{ env.PACKER_VERSION }}
+
+      - name: Debug OIDC Claims
+        uses: github/actions-oidc-debugger@main
+        with:
+          audience: '${{ github.server_url }}/${{ github.repository_owner }}'
 
       - name: Configure AWS Credentials
         id: aws-configure-credentials

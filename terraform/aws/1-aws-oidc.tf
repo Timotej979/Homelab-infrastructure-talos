@@ -50,6 +50,12 @@ data "aws_iam_policy_document" "github_oidc" {
             variable = "token.actions.githubusercontent.com:sub"
             values   = ["repo:${each.value.repository_claim}:*"]
         }
+
+        condition {
+            test     = "StringEquals"
+            variable = "token.actions.githubusercontent.com:aud"
+            values   = ["sts.amazonaws.com"]
+        }
     }
 }
 
