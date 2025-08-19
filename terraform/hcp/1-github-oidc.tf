@@ -25,7 +25,8 @@ resource "hcp_iam_workload_identity_provider" "github_wip" {
 
     name              = "${each.value.name}-wip"
     service_principal = hcp_service_principal.oidc_deployment_sp[each.key].resource_name
-    description       = "Allow GitHub Actions from ${each.value.repository_claim} repository on ${each.value.ref_claim} branch to authenticate with HCP"
+    description = "Allow GitHub Actions from ${each.value.repository_claim} on branches ${each.value.ref_claims_regex} for workflows: ${each.value.workflow_ref_claims_regex}"
+
 
     oidc = {
         issuer_uri = "https://token.actions.githubusercontent.com"
@@ -34,6 +35,7 @@ resource "hcp_iam_workload_identity_provider" "github_wip" {
     conditional_access = <<EOT
         jwt_claims.actor == "${each.value.actor_claim}" and
         jwt_claims.repository == "${each.value.repository_claim}" and
-        jwt_claims.ref == "${each.value.ref_claim}"
+        jwt_claims.ref matches "${each.value.ref_claims_regex}" and
+        jwt_claims.workflow_ref matches "${each.value.workflow_ref_claims_regex}"
     EOT
 }
