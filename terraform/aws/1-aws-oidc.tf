@@ -3,7 +3,7 @@
 # -------------------------------------------------
 resource "aws_iam_openid_connect_provider" "github" {
     url            = "https://token.actions.githubusercontent.com"
-    client_id_list = ["https://github.com/${values(var.workload_identity_providers_config)[0].actor_claim}"]
+    client_id_list = ["sts.amazonaws.com"]
 }
 
 # -------------------------------------------------
