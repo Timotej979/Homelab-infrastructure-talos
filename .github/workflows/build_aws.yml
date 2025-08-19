@@ -17,6 +17,7 @@ jobs:
     name: Build Development AWS Image
     environment: Development
     runs-on: ubuntu-24.04
+    if: github.ref_name == 'dev'
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -97,7 +98,7 @@ jobs:
     name: Build Staging AWS Image
     environment: Staging
     runs-on: ubuntu-24.04
-    needs: dev
+    if: github.ref_name == 'stage'
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -156,7 +157,7 @@ jobs:
     name: Build Production AWS Image
     environment: Production
     runs-on: ubuntu-24.04
-    needs: staging
+    if: github.ref_name == 'main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
