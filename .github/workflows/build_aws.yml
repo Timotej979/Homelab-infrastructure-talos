@@ -42,7 +42,7 @@ jobs:
       - name: Debug OIDC Claims
         uses: github/actions-oidc-debugger@main
         with:
-          audience: '${{ github.server_url }}/${{ github.repository_owner }}'
+          audience: 'sts.amazonaws.com'
 
       - name: Configure AWS Credentials
         id: aws-configure-credentials
@@ -105,7 +105,7 @@ jobs:
       - name: Debug OIDC Claims
         uses: github/actions-oidc-debugger@main
         with:
-          audience: '${{ github.server_url }}/${{ github.repository_owner }}'
+          audience: 'sts.amazonaws.com'
 
       - name: Configure AWS Credentials
         id: aws-configure-credentials
@@ -170,7 +170,7 @@ jobs:
       - name: Debug OIDC Claims
         uses: github/actions-oidc-debugger@main
         with:
-          audience: '${{ github.server_url }}/${{ github.repository_owner }}'
+          audience: 'sts.amazonaws.com'
 
       - name: Configure AWS Credentials
         id: aws-configure-credentials

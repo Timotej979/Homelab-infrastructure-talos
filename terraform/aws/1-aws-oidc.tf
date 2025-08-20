@@ -1,9 +1,25 @@
 # -------------------------------------------------
+# Fetch GitHub OIDC Thumbprint dynamically via OpenSSL
+# -------------------------------------------------
+data "external" "github_oidc_thumbprint" {
+    program = ["bash", "-c", <<EOT
+        thumbprint=$(openssl s_client -servername token.actions.githubusercontent.com -connect token.actions.githubusercontent.com:443 </dev/null 2>/dev/null \
+        | openssl x509 -fingerprint -noout -sha1 \
+        | cut -d '=' -f 2 \
+        | tr -d ':' \
+        | tr '[:upper:]' '[:lower:]')
+        jq -n --arg thumbprint "$thumbprint" '{"thumbprint":$thumbprint}'
+    EOT
+    ]
+}
+
+# -------------------------------------------------
 # OIDC provider for GitHub Actions
 # -------------------------------------------------
 resource "aws_iam_openid_connect_provider" "github" {
     url            = "https://token.actions.githubusercontent.com"
     client_id_list = ["sts.amazonaws.com"]
+    thumbprint_list = data.external.github_oidc_thumbprint.result["thumbprint"] != "" ? [data.external.github_oidc_thumbprint.result["thumbprint"]] : []
 }
 
 # -------------------------------------------------
@@ -48,7 +64,7 @@ data "aws_iam_policy_document" "github_oidc" {
         condition {
             test     = "StringLike"
             variable = "token.actions.githubusercontent.com:sub"
-            values   = ["repo:${each.value.repository_claim}:*"]
+            values   = ["repo:${each.value.repository_claim}:environment:*"]
         }
 
         condition {
