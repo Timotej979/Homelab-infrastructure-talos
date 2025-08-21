@@ -51,6 +51,8 @@ jobs:
           aws sts get-caller-identity
 
       - name: Build Development Image
+        env:
+          HCP_CRED_FILE: ${{ env.HCP_CRED_FILE }}
         working-directory: ./packer/aws/templates
         run: |
           GREEN='\033[38;5;82m'
@@ -111,6 +113,8 @@ jobs:
           aws sts get-caller-identity
 
       - name: Build Staging Image
+        env:
+          HCP_CRED_FILE: ${{ env.HCP_CRED_FILE }}
         working-directory: ./packer/aws/templates
         run: |
           GREEN='\033[38;5;82m'
@@ -169,6 +173,8 @@ jobs:
           aws sts get-caller-identity
 
       - name: Build Production Image
+        env:
+          HCP_CRED_FILE: ${{ env.HCP_CRED_FILE }}
         working-directory: ./packer/aws/templates
         run: |
           GREEN='\033[38;5;82m'
