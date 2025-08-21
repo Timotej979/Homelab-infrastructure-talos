@@ -52,6 +52,8 @@ jobs:
           aws sts get-caller-identity
 
       - name: Build Development Image
+        env:
+          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
         working-directory: ./packer/aws/templates
         run: |
           GREEN='\033[38;5;82m'
@@ -65,8 +67,9 @@ jobs:
           log_info() { printf "[INFO] %s\n" "$1"; }
 
           log_info "Configure HCP credentials..."
-          export HCP_CRED_FILE=${{ steps.hcp-auth.outputs.credentials_file_path }}
-          log_success "HCP credentials configured successfully in $HCP_CRED_FILE"
+          export HCP_CLIENT_ID=$(jq -r '.client_id' $HCP_CRED_FILE)
+          export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
+          log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
 
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
@@ -117,6 +120,8 @@ jobs:
           aws sts get-caller-identity
 
       - name: Build Staging Image
+        env:
+          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
         working-directory: ./packer/aws/templates
         run: |
           GREEN='\033[38;5;82m'
@@ -130,8 +135,9 @@ jobs:
           log_info() { printf "[INFO] %s\n" "$1"; }
 
           log_info "Configure HCP credentials..."
-          export HCP_CRED_FILE=${{ steps.hcp-auth.outputs.credentials_file_path }}
-          log_success "HCP credentials configured successfully in $HCP_CRED_FILE"
+          export HCP_CLIENT_ID=$(jq -r '.client_id' $HCP_CRED_FILE)
+          export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
+          log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
 
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
@@ -180,6 +186,8 @@ jobs:
           aws sts get-caller-identity
 
       - name: Build Production Image
+        env:
+          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
         working-directory: ./packer/aws/templates
         run: |
           GREEN='\033[38;5;82m'
@@ -193,8 +201,9 @@ jobs:
           log_info() { printf "[INFO] %s\n" "$1"; }
 
           log_info "Configure HCP credentials..."
-          export HCP_CRED_FILE=${{ steps.hcp-auth.outputs.credentials_file_path }}
-          log_success "HCP credentials configured successfully in $HCP_CRED_FILE"
+          export HCP_CLIENT_ID=$(jq -r '.client_id' $HCP_CRED_FILE)
+          export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
+          log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
 
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
