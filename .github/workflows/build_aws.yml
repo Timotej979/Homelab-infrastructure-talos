@@ -50,6 +50,11 @@ jobs:
         with:
           aws-region: ${{ secrets.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          output-env-credentials: true
+
+      - name: Check AWS Cloud environment access
+        run: |
+          aws sts get-caller-identity
 
       - name: Build Development Image
         working-directory: ./packer/aws/templates
@@ -63,12 +68,6 @@ jobs:
           log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
           log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
           log_info() { printf "[INFO] %s\n" "$1"; }
-
-          log_info "Configuring AWS credentials..."
-          export AWS_ACCESS_KEY_ID="${{ steps.aws-configure-credentials.outputs.aws-access-key-id }}"
-          export AWS_SECRET_ACCESS_KEY="${{ steps.aws-configure-credentials.outputs.aws-secret-access-key }}"
-          export AWS_SESSION_TOKEN="${{ steps.aws-configure-credentials.outputs.aws-session-token }}"
-          log_success "AWS credentials configured successfully."
 
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl

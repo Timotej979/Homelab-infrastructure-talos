@@ -38,30 +38,6 @@ data "aws_iam_policy_document" "github_oidc" {
         }
 
         condition {
-            test     = "StringEquals"
-            variable = "token.actions.githubusercontent.com:actor"
-            values   = [each.value.actor_claim]
-        }
-
-        condition {
-            test     = "StringEquals"
-            variable = "token.actions.githubusercontent.com:repository"
-            values   = [each.value.repository_claim]
-        }
-
-        condition {
-        test     = "StringEquals"
-        variable = "token.actions.githubusercontent.com:ref"
-        values   = [each.value.ref_claim]
-        }
-
-        condition {
-            test     = "StringEquals"
-            variable = "token.actions.githubusercontent.com:workflow_ref"
-            values   = each.value.workflow_ref_claims
-        }
-
-        condition {
             test     = "StringLike"
             variable = "token.actions.githubusercontent.com:sub"
             values   = ["repo:${each.value.repository_claim}:environment:*"]
