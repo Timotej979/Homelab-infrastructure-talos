@@ -32,7 +32,7 @@ data "external" "talos_info" {
 #############################################
 locals {
     talos_version = data.external.talos_info.result.talos_version
-    talos_arch = data.external.talos_info.result.talos_arch
+    talos_arch = data.external.talos_info.result.architecture
     img_path = "${path.root}/../scripts/talos-img.raw.xz"
 }
 
