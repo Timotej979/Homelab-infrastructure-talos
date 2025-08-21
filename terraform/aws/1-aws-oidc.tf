@@ -82,9 +82,12 @@ data "aws_iam_policy_document" "packer_talos" {
             "ec2:DescribeImages",
             "ec2:DescribeImageAttribute"
         ]
-        resources = [
-            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:image/*"
-        ]
+        resources = ["*"]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
     }
 
     #########################
