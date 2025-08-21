@@ -160,4 +160,5 @@ fetch_image_from_talos_factory
 jq -n \
     --arg version "$TALOS_VERSION" \
     --arg schematic_id "$TALOS_SCHEMATIC_ID" \
-    '{talos_version: $version, schematic_id: $schematic_id}'
+    --arg arch "$TALOS_MACHINE_TYPE" \
+    '{talos_version: $version, schematic_id: $schematic_id, architecture: $arch}'
