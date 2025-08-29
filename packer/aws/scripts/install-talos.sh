@@ -1,162 +1,163 @@
 #!/bin/bash
+set -euo pipefail
 
+# ================================
 # Color codes
-GREEN='\033[38;5;82m'   # Bright green
-ORANGE='\033[38;5;208m' # Bright orange
-RED='\033[38;5;196m'    # Bright red
-RESET='\033[0m'         # Reset to default color
+# ================================
+GREEN='\033[38;5;82m'
+ORANGE='\033[38;5;208m'
+RED='\033[38;5;196m'
+RESET='\033[0m'
 
-# Logging functions for colored messages to stderr (data external provider in packer limitation)
+# ================================
+# Logging functions
+# ================================
 log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n" "$1" >&2; }
 log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1" >&2; }
-log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1" >&2; }
-log_info() { printf "[INFO] %s\n" "$1" >&2; }
+log_error()   { printf "${RED}[ERROR] %s${RESET}\n" "$1" >&2; exit 1; }
+log_info()    { printf "[INFO] %s\n" "$1" >&2; }
 
-# Help function to display usage
+# ================================
+# Help / usage
+# ================================
 show_help() {
-    echo "Usage: $0 [TALOS_VERSION] [TALOS_MACHINE_TYPE] [TALOS_EXTENSIONS]"
-    echo
-    echo "Fetch AWS image from the Talos Factory API."
-    echo
-    echo "Arguments:"
-    echo "  TALOS_VERSION       (Optional) Specify the Talos version to use."
-    echo "  TALOS_MACHINE_TYPE  (Optional) Specify the Talos machine type to use."
-    echo "                                 Options are arm64/amd64 (Default is arm64)."
-    echo "  TALOS_EXTENSIONS    (Optional) Specify the Talos extensions to use."
-    echo "                                 Check list of available extensions at https://github.com/siderolabs/extensions"
-    echo
-    echo "Examples:"
-    echo "  $0                                                                 Fetch latest version with arm64 machine type."
-    echo "  $0 v1.9.3                                                          Fetch version v1.9.3."
-    echo "  $0 v1.9.3 amd64                                                    Fetch version v1.9.3 with amd64 machine type."
-    echo "  $0 v1.9.3 amd64 '[\"siderolabs/gvisor\", \"siderolabs/amd-ucode\"]'    Fetch version v1.9.3 with extensions."
-    echo
+    cat <<EOF
+Usage: $0 [options]
+
+Fetch AWS image from the Talos Factory API.
+
+Options:
+  -v, --version <VERSION>    Talos version (default: latest or from stdin/env)
+  -a, --arch <ARCH>          Machine type: amd64 | arm64 (default: arm64 or from stdin/env)
+  -e, --extensions <JSON>    Talos extensions JSON array (default: [] or from stdin/env)
+  -h, --help                 Show this help message and exit
+EOF
     exit 0
 }
 
-# Check if help flag is used
-if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    show_help
+# ================================
+# Defaults from environment
+# ================================
+TALOS_VERSION="${TALOS_VERSION:-latest}"
+TALOS_MACHINE_TYPE="${TALOS_MACHINE_TYPE:-arm64}"
+TALOS_EXTENSIONS="${TALOS_EXTENSIONS:-[]}"
+
+# ================================
+# Read stdin JSON for external provider
+# ================================
+if [ ! -t 0 ]; then
+    # stdin is not empty, read JSON from Packer
+    eval "$(jq -r '@sh "STDIN_VERSION=\(.version) STDIN_ARCH=\(.arch) STDIN_EXTENSIONS=\(.extensions)"' 2>/dev/null || echo "")"
+
+    # Override environment defaults if stdin provided values
+    TALOS_VERSION="${STDIN_VERSION:-$TALOS_VERSION}"
+    TALOS_MACHINE_TYPE="${STDIN_ARCH:-$TALOS_MACHINE_TYPE}"
+    TALOS_EXTENSIONS="${STDIN_EXTENSIONS:-$TALOS_EXTENSIONS}"
 fi
 
-# Function to check if the version is valid
+# ================================
+# Parse arguments (CLI overrides everything)
+# ================================
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -v|--version)    TALOS_VERSION="$2"; shift 2 ;;
+        -a|--arch)       TALOS_MACHINE_TYPE="$2"; shift 2 ;;
+        -e|--extensions) TALOS_EXTENSIONS="$2"; shift 2 ;;
+        -h|--help)       show_help ;;
+        -*)              log_error "Unknown option: $1" ;;
+        *)               log_error "Unexpected argument: $1" ;;
+    esac
+done
+
+# ================================
+# Constants
+# ================================
+TALOS_IMAGE_FACTORY_URL="https://factory.talos.dev"
+
+# ================================
+# Functions
+# ================================
 get_correct_image_version() {
-    log_info "Checking if the provided version is valid or fetching the latest image if the version was not specified ..."
+    log_info "Checking version validity (or fetching latest)..."
 
-    # Get the list of versions from the Talos Factory API
     log_info "Fetching the list of TalosOS versions from the API ..."
-    TALOS_VERSIONS_LIST=$(curl -s -X GET "$TALOS_IMAGE_FACTORY_URL/versions") || {
-        log_error "Error: Failed to fetch TalosOS versions from the API"
-        exit 1
-    }
+    TALOS_VERSIONS_LIST=$(curl -s -X GET "$TALOS_IMAGE_FACTORY_URL/versions") \
+        || log_error "Failed to fetch TalosOS versions from the API"
 
-    # Fetch the latest version if the version is not provided
     if [ -z "$TALOS_VERSION" ] || [ "$TALOS_VERSION" = "latest" ]; then
         log_info "Fetching latest version..."
-        TALOS_VERSION=$(echo "$TALOS_VERSIONS_LIST" | jq -r '.[]' | grep -oE '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+        TALOS_VERSION=$(echo "$TALOS_VERSIONS_LIST" | jq -r '.[]' \
+            | grep -oE '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
         log_success "Latest version is $TALOS_VERSION"
     fi
 
-    # Validate if the provided version exists in the list
-    log_info "Validating the version provided/extracted ..."
+    log_info "Validating version $TALOS_VERSION ..."
     if echo "$TALOS_VERSIONS_LIST" | sed 's/[][]//g' | tr -d '"' | tr ',' '\n' | grep -Fxq "$TALOS_VERSION"; then
         log_success "Version $TALOS_VERSION is valid"
     else
-        log_error "Error: Version $TALOS_VERSION is not valid. Please provide one of the valid versions which are: $TALOS_VERSIONS_LIST"
-        exit 1
+        log_error "Version $TALOS_VERSION is not valid. Valid versions: $TALOS_VERSIONS_LIST"
     fi
-
-    export TALOS_VERSION="$TALOS_VERSION"
 }
 
-# Function to generate the image schematic for the Alicloud image
 generate_image_schematic() {
-    log_info "Generating the image schematic for the Alicloud image ..."
+    log_info "Generating the image schematic ..."
 
-    # Check the validity of the extensions
-    log_info "Checking the validity of the extensions ..."
     if [ -z "$TALOS_EXTENSIONS" ]; then
-        TALOS_EXTENSIONS='[]' # Default value
+        TALOS_EXTENSIONS='[]'
     elif ! echo "$TALOS_EXTENSIONS" | jq empty >/dev/null 2>&1; then
-        log_error "Error: Extensions $TALOS_EXTENSIONS is not a valid JSON array. Please provide the extensions in the format '[\"extension1\", \"extension2\"]'"
-        exit 1
+        log_error "Extensions $TALOS_EXTENSIONS is not valid JSON. Use '[\"ext1\", \"ext2\"]'"
     fi
-    log_success "Extensions are valid, using the following list of extencions:"
-    log_success "$TALOS_EXTENSIONS"
 
-    # Generate the image schematic to send to the API
-    log_info "Generating the image schematic to send to the API ..."
+    log_success "Using extensions: $TALOS_EXTENSIONS"
+
     TALOS_SCHEMATIC_SPECIFICATION=$(jq -n --argjson talos_extensions "$TALOS_EXTENSIONS" \
         '{
-        "customization": {
-            "extraKernelArgs": [],
-            "meta": [{}],
-            "systemExtensions": {
-                "officialExtensions": $talos_extensions
-            },
-            "secureboot": {}
-        }
-    }')
+            "customization": {
+                "extraKernelArgs": [],
+                "meta": [{}],
+                "systemExtensions": {
+                    "officialExtensions": $talos_extensions
+                },
+                "secureboot": {}
+            }
+        }')
 
-    # Send the image schematic to the Talos Factory API
-    log_info "Sending the image schematic to the Talos Factory API ..."
     RESPONSE=$(curl -s -X POST "$TALOS_IMAGE_FACTORY_URL/schematics" \
         -H "Content-Type: application/json" \
-        -d "$TALOS_SCHEMATIC_SPECIFICATION") || {
-        log_error "Error: Failed to generate the image schematic"
-        exit 1
-    }
+        -d "$TALOS_SCHEMATIC_SPECIFICATION") \
+        || log_error "Failed to generate the image schematic"
 
-    log_success "Image schematic generated successfully"
-
-    # Extract the schematic ID from the response
-    log_info "Extracting the schematic ID from the response ..."
     TALOS_SCHEMATIC_ID=$(echo "$RESPONSE" | jq -r '.id')
-
-    export TALOS_SCHEMATIC_ID="$TALOS_SCHEMATIC_ID"
+    log_success "Image schematic generated successfully (ID: $TALOS_SCHEMATIC_ID)"
 }
 
 fetch_image_from_talos_factory() {
     log_info "Fetching the image from the Talos Factory API..."
 
-    # Check validity of the machine type
-    log_info "Checking the validity of the machine type ..."
-    if [ -z "$TALOS_MACHINE_TYPE" ]; then
-        TALOS_MACHINE_TYPE="arm64" # Default value
-    elif [ "$TALOS_MACHINE_TYPE" != "amd64" ] && [ "$TALOS_MACHINE_TYPE" != "arm64" ]; then
-        log_error "Error: Machine type $MACHINE_TYPE is not valid. Please provide one of the valid machine types which are: amd64, arm64"
-        exit 1
+    if [ "$TALOS_MACHINE_TYPE" != "amd64" ] && [ "$TALOS_MACHINE_TYPE" != "arm64" ]; then
+        log_error "Invalid machine type: $TALOS_MACHINE_TYPE (must be amd64 or arm64)"
     fi
-    log_success "Machine type is valid, using $TALOS_MACHINE_TYPE"
+    log_success "Machine type is valid: $TALOS_MACHINE_TYPE"
 
-    # Fetch the image from the Talos Factory API
-    log_info "Fetching the image from the Talos Factory API ..."
-    curl -X GET "$(printf "%s/image/%s/%s/aws-%s.raw.xz" "$TALOS_IMAGE_FACTORY_URL" "$TALOS_SCHEMATIC_ID" "$TALOS_VERSION" "$TALOS_MACHINE_TYPE")" -o talos-img.raw.xz || {
-        log_error "Error: Failed to fetch the image from the Talos Factory API"
-        exit 1
-    }
+    IMAGE_URL="$(printf "%s/image/%s/%s/aws-%s.raw.xz" \
+        "$TALOS_IMAGE_FACTORY_URL" "$TALOS_SCHEMATIC_ID" "$TALOS_VERSION" "$TALOS_MACHINE_TYPE")"
+    OUTPUT_FILE="talos-img.raw.xz"
 
-    log_success "Machine image for AWS cloud for $TALOS_MACHINE_TYPE fetched successfully"
+    log_info "Downloading Talos image from $IMAGE_URL ..."
+    curl -fSL "$IMAGE_URL" -o "$OUTPUT_FILE" \
+        || log_error "Failed to fetch the image"
+
+    log_success "Image downloaded successfully"
 }
 
-# INPUTS
-TALOS_VERSION=$1
-TALOS_MACHINE_TYPE=$2
-TALOS_EXTENSIONS=$3
-
-# Constants
-TALOS_IMAGE_FACTORY_URL="https://factory.talos.dev"
-
-# Check Talos version
+# ================================
+# Main execution
+# ================================
 get_correct_image_version
-
-# Generate the image schematic
 generate_image_schematic
-
-# Fetch the image from the Talos Factory API
 fetch_image_from_talos_factory
 
-# Output the results for the Talos image
+# Output JSON for Packer external provider
 jq -n \
     --arg version "$TALOS_VERSION" \
     --arg schematic_id "$TALOS_SCHEMATIC_ID" \

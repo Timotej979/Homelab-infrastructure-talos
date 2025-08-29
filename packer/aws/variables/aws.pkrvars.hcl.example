@@ -1,2 +1,5 @@
-aws_region        = "eu-central-1"
-aws_instance_type = "t4g.medium"
+aws_region         = "eu-central-1"
+aws_instance_type  = "t4g.medium"
+talos_version      = "latest"
+talos_architecture = "arm64"
+talos_extensions   = []

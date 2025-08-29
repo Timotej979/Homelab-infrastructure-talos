@@ -13,8 +13,8 @@ env:
   PACKER_VERSION: "1.12.0"
 
 jobs:
-  dev:
-    name: Build Development AWS Image
+  dev-arm64:
+    name: Build Development AWS Image for ARM64 architecture
     environment: Development
     runs-on: ubuntu-24.04
     if: github.ref_name == 'dev'
@@ -76,11 +76,101 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build ./aws.pkr.hcl
+          packer build \
+            -var "channel=aws-dev-arm64" \
+            -var "talos_version=latest" \
+            -var "talos_architecture=arm64" \
+            -var "talos_extensions=[]" \
+            ./aws.pkr.hcl
+          log_success "AWS image built successfully."
+          
+          log_info "Promoting image to aws-dev channel..."
+          hcp packer channels use \
+            --bucket homelab-infrastructure-talos \
+            --channel aws-dev-arm64 \
+            --version latest
+          log_success "Image promoted to aws-dev-arm64 channel."
+
+  dev-amd64:
+    name: Build Development AWS Image for AMD64 architecture
+    environment: Development
+    runs-on: ubuntu-24.04
+    if: github.ref_name == 'dev'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Configure HCP Credentials
+        id: hcp-auth
+        uses: hashicorp/hcp-auth-action@v0.1.0
+        with:
+          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
+          export_environment_variables: true
+
+      - name: Install HCP CLI
+        uses: hashicorp/hcp-setup-action@v0.1.0
+        with:
+          version: ${{ env.HCP_CLI_VERSION }}
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Configure AWS Credentials
+        id: aws-configure-credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          output-env-credentials: true
+
+      - name: Check AWS Cloud environment access
+        run: |
+          aws sts get-caller-identity
+
+      - name: Build Development Image
+        env:
+          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
+        working-directory: ./packer/aws/templates
+        run: |
+          GREEN='\033[38;5;82m'
+          ORANGE='\033[38;5;208m'
+          RED='\033[38;5;196m'
+          RESET='\033[0m'
+
+          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
+          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
+          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
+          log_info() { printf "[INFO] %s\n" "$1"; }
+
+          log_info "Configure HCP credentials..."
+          export HCP_CLIENT_ID=$(jq -r '.client_id' $HCP_CRED_FILE)
+          export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
+          log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
+
+          log_info "Initializing Packer build..."
+          packer init ./aws.pkr.hcl
+          log_success "Packer build initialized successfully."
+
+          log_info "Starting Packer build..."
+          packer build \
+            -var "channel=aws-dev-amd64" \
+            -var "talos_version=latest" \
+            -var "talos_architecture=amd64" \
+            -var "talos_extensions=[]" \
+            ./aws.pkr.hcl
           log_success "AWS image built successfully."
 
-  staging:
-    name: Build Staging AWS Image
+          log_info "Promoting image to aws-dev-amd64 channel..."
+          hcp packer channels use \
+            --bucket homelab-infrastructure-talos \
+            --channel aws-dev-amd64 \
+            --version latest
+          log_success "Image promoted to aws-dev-amd64 channel."
+
+  stage-arm64:
+    name: Build Staging AWS Image for ARM64 architecture
     environment: Staging
     runs-on: ubuntu-24.04
     if: github.ref_name == 'stage'
@@ -144,11 +234,103 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build ./aws.pkr.hcl
+          packer build \
+            -var "channel=aws-stage-arm64" \
+            -var "talos_version=latest" \
+            -var "talos_architecture=arm64" \
+            -var "talos_extensions=[]" \
+            ./aws.pkr.hcl
           log_success "AWS image built successfully."
 
-  prod:
-    name: Build Production AWS Image
+          log_info "Promoting image to aws-stage-arm64 channel..."
+          hcp packer channels use \
+            --bucket homelab-infrastructure-talos \
+            --channel aws-stage-arm64 \
+            --version latest
+          log_success "Image promoted to aws-stage-arm64 channel."
+
+  stage-amd64:
+    name: Build Staging AWS Image for AMD64 architecture
+    environment: Staging
+    runs-on: ubuntu-24.04
+    if: github.ref_name == 'stage'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Configure HCP Credentials
+        id: hcp-auth
+        uses: hashicorp/hcp-auth-action@v0.1.0
+        with:
+          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
+          export_environment_variables: true
+
+      - name: Install HCP CLI
+        uses: hashicorp/hcp-setup-action@v0.1.0
+        with:
+          version: ${{ env.HCP_CLI_VERSION }}
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Configure AWS Credentials
+        id: aws-configure-credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        env:
+          ACTIONS_STEP_DEBUG: true
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          output-env-credentials: true
+
+      - name: Check AWS Cloud environment access
+        run: |
+          aws sts get-caller-identity
+
+      - name: Build Staging Image
+        env:
+          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
+        working-directory: ./packer/aws/templates
+        run: |
+          GREEN='\033[38;5;82m'
+          ORANGE='\033[38;5;208m'
+          RED='\033[38;5;196m'
+          RESET='\033[0m'
+
+          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
+          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
+          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
+          log_info() { printf "[INFO] %s\n" "$1"; }
+
+          log_info "Configure HCP credentials..."
+          export HCP_CLIENT_ID=$(jq -r '.client_id' $HCP_CRED_FILE)
+          export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
+          log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
+
+          log_info "Initializing Packer build..."
+          packer init ./aws.pkr.hcl
+          log_success "Packer build initialized successfully."
+
+          log_info "Starting Packer build..."
+          packer build \
+            -var "channel=aws-stage-amd64" \
+            -var "talos_version=latest" \
+            -var "talos_architecture=amd64" \
+            -var "talos_extensions=[]" \
+            ./aws.pkr.hcl
+          log_success "AWS image built successfully."
+
+          log_info "Promoting image to aws-stage-amd64 channel..."
+          hcp packer channels use \
+            --bucket homelab-infrastructure-talos \
+            --channel aws-stage-amd64 \
+            --version latest
+          log_success "Image promoted to aws-stage-amd64 channel."
+
+  prod-arm64:
+    name: Build Production AWS Image for ARM64 architecture
     environment: Production
     runs-on: ubuntu-24.04
     if: github.ref_name == 'main'
@@ -210,5 +392,95 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build ./aws.pkr.hcl
+          packer build \
+            -var "channel=aws-prod-arm64" \
+            -var "talos_version=latest" \
+            -var "talos_architecture=arm64" \
+            -var "talos_extensions=[]" \
+            ./aws.pkr.hcl
           log_success "AWS image built successfully."
+
+          log_info "Promoting image to aws-prod-arm64 channel..."
+          hcp packer channels use \
+            --bucket homelab-infrastructure-talos \
+            --channel aws-prod-arm64 \
+            --version latest
+          log_success "Image promoted to aws-prod-arm64 channel."
+
+  prod-amd64:
+    name: Build Production AWS Image for AMD64 architecture
+    environment: Production
+    runs-on: ubuntu-24.04
+    if: github.ref_name == 'main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Configure HCP Credentials
+        id: hcp-auth
+        uses: hashicorp/hcp-auth-action@v0.1.0
+        with:
+          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
+          export_environment_variables: true
+
+      - name: Install HCP CLI
+        uses: hashicorp/hcp-setup-action@v0.1.0
+        with:
+          version: ${{ env.HCP_CLI_VERSION }}
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: ${{ env.PACKER_VERSION }}
+
+      - name: Configure AWS Credentials
+        id: aws-configure-credentials
+        uses: aws-actions/configure-aws-credentials@v4.3.1
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          output-env-credentials: true
+
+      - name: Check AWS Cloud environment access
+        run: |
+          aws sts get-caller-identity
+
+      - name: Build Production Image
+        env:
+          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
+        working-directory: ./packer/aws/templates
+        run: |
+          GREEN='\033[38;5;82m'
+          ORANGE='\033[38;5;208m'
+          RED='\033[38;5;196m'
+          RESET='\033[0m'
+
+          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
+          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
+          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
+          log_info() { printf "[INFO] %s\n" "$1"; }
+
+          log_info "Configure HCP credentials..."
+          export HCP_CLIENT_ID=$(jq -r '.client_id' $HCP_CRED_FILE)
+          export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
+          log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
+
+          log_info "Initializing Packer build..."
+          packer init ./aws.pkr.hcl
+          log_success "Packer build initialized successfully."
+
+          log_info "Starting Packer build..."
+          packer build \
+            -var "channel=aws-prod-amd64" \
+            -var "talos_version=latest" \
+            -var "talos_architecture=amd64" \
+            -var "talos_extensions=[]" \
+            ./aws.pkr.hcl
+          log_success "AWS image built successfully."
+
+          log_info "Promoting image to aws-prod-amd64 channel..."
+          hcp packer channels use \
+            --bucket homelab-infrastructure-talos \
+            --channel aws-prod-amd64 \
+            --version latest
+          log_success "Image promoted to aws-prod-amd64 channel."

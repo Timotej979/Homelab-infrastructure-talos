@@ -16,6 +16,7 @@ crash.log
 *.box
 
 # TalosOS images
+*.raw
 *.raw.xz
 *.raw.gz
 *.qcow2

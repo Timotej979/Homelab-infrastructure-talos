@@ -12,6 +12,12 @@ packer {
 }
 
 #############################################
+variable "channel" {
+    description = "Talos channel to use (aws-dev, aws-stage, aws-prod)"
+    type        = string
+    default     = "aws-dev"
+}
+
 variable "aws_region" {
     description = "AWS Region"
     type        = string
@@ -24,24 +30,48 @@ variable "aws_instance_type" {
     default     = "t4g.medium"
 }
 
+variable "talos_version" {
+    description = "Talos version to install"
+    type        = string
+    default     = "latest"
+}
+
+variable "talos_architecture" {
+    description = "Talos architecture to install (amd64 or arm64)"
+    type        = string
+    default     = "arm64"
+}
+
+variable "talos_extensions" {
+    description = "Talos extensions to install"
+    type        = list(string)
+    default     = []
+}
+
 #############################################
 data "external" "talos_info" {
-  program = ["bash", "${path.root}/../scripts/install-talos.sh"]
+    program = ["bash", "${path.root}/../scripts/install-talos.sh"]
+
+    query = {
+        version    = var.talos_version
+        arch       = var.talos_architecture
+        extensions = jsonencode(var.talos_extensions)
+    }
 }
 
 #############################################
 locals {
     talos_version = data.external.talos_info.result.talos_version
-    talos_arch = data.external.talos_info.result.architecture
-    img_path = "${path.root}/../scripts/talos-img.raw.xz"
+    talos_arch    = data.external.talos_info.result.architecture
+    img_path      = "${path.root}/talos-img.raw.xz"
 }
 
 #############################################
 data "amazon-ami" "ubuntu" {
     filters = {
-        name = "ubuntu/images/*ubuntu-jammy-22.04-${local.talos_arch}-server-*"
+        name                = "ubuntu/images/*ubuntu-jammy-22.04-${local.talos_arch}-server-*"
         virtualization-type = "hvm"
-        root-device-type = "ebs"
+        root-device-type    = "ebs"
     }
     most_recent = true
     owners      = ["099720109477"]
@@ -49,23 +79,41 @@ data "amazon-ami" "ubuntu" {
 }
 
 #############################################
-source "amazon-ebs" "talos" {
-    # The AWS Cloud region
-    region     = var.aws_region
-
-    # The AWS Cloud server configuration
-    source_ami = data.amazon-ami.ubuntu.id
+source "amazon-ebssurrogate" "talos" {
+    region        = var.aws_region
     instance_type = var.aws_instance_type
-    ssh_username = "ubuntu"
-     
-    ami_name = "talos-system-disk-${local.talos_arch}-${local.talos_version}"
+
+    source_ami             = data.amazon-ami.ubuntu.id
+    ssh_username           = "ubuntu"
+    ami_virtualization_type = "hvm"
+
+    ami_name        = "talos-${local.talos_arch}-${local.talos_version}-${formatdate("YYYYMMDDhhmmss", timestamp())}"
     ami_description = "Talos OS ${local.talos_version} for ${local.talos_arch}"
-    ami_users = ["all"]
-    snapshot_users = ["all"]
-    
+
+    launch_block_device_mappings {
+        device_name           = "/dev/sdb"
+        volume_size           = 20
+        volume_type           = "gp3"
+        delete_on_termination = true
+    }
+
+    ami_root_device {
+        source_device_name    = "/dev/sdb"
+        device_name           = "/dev/sdb"
+        delete_on_termination = true
+    }
+
+    launch_block_device_mappings {
+        device_name           = "/dev/sda1"
+        volume_size           = 10
+        volume_type           = "gp3"
+        delete_on_termination = true
+    }
+
     tags = {
         platform  = "aws"
         os        = "talos"
+        channel   = var.channel
         version   = local.talos_version
         arch      = local.talos_arch
         timestamp = timestamp()
@@ -73,16 +121,21 @@ source "amazon-ebs" "talos" {
 }
 
 #############################################
-build {
-    hcp_packer_registry {
-        description = "Homelab-infrastructure TalosOS images registry"
-        bucket_name = "homelab-infrastructure-talos"
-        bucket_labels = {
-            "packer_version" = packer.version
-        }
+hcp_packer_registry {
+    bucket_name = "homelab-infrastructure-talos"
+    description = "Talos AMIs for Cloud"
+    build_labels = {
+        "platform"  = "aws"
+        "version"   = local.talos_version
+        "arch"      = local.talos_arch
+        "timestamp" = timestamp()
+        "channel"   = var.channel
     }
+}
 
-    sources = ["source.amazon-ebs.talos"]
+#############################################
+build {
+    sources = ["source.amazon-ebssurrogate.talos"]
 
     provisioner "file" {
         source      = local.img_path
@@ -91,13 +144,30 @@ build {
 
     provisioner "shell" {
         inline = [
-            "xz -d -c /tmp/talos.raw.xz | dd of=/dev/nvme0n1 bs=1M && sync"
-        ]
-    }
+            <<-EOF
+            set -eux
 
-    post-processor "shell-local" {
-        inline = [
-            "trivy image $(packer manifest inspect | jq -r '.builds[0].artifact_id') -f json -o trivy-report.json"
+            export SEC_PATH=""
+            for i in {1..10}; do
+                SEC_DEV=$(lsblk -ndo NAME,MOUNTPOINT | awk '$2=="" {print $1}' | grep -v "^nvme0n1$" | head -n1)
+                if [ -n "$SEC_DEV" ]; then
+                    export SEC_PATH="/dev/$SEC_DEV"
+                    break
+                fi
+                echo "Waiting for secondary device..."
+                sleep 2
+            done
+
+            if [ -z $SEC_PATH ]; then
+                echo "❌ Secondary device not found after waiting"
+                exit 1
+            fi
+
+            echo "✅ Found secondary block device: $SEC_PATH"
+            echo "✅ Writing Talos raw image to $SEC_PATH..."
+            sudo xzcat /tmp/talos.raw.xz | sudo dd of=$SEC_PATH bs=1M conv=fsync status=progress
+            sync
+            EOF
         ]
     }
 }
