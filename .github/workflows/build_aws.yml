@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 env:
-  HCP_CLI_VERSION: "0.8.0"
-  PACKER_VERSION: "1.12.0"
+  HCP_CLI_VERSION: "0.10.0"
+  PACKER_VERSION: "1.14.1"
 
 jobs:
   dev-arm64:
