@@ -226,6 +226,8 @@ jobs:
           hcp auth login --cred-file=$HCP_CRED_FILE
           log_success "Logged in to HCP successfully."
 
+          jq 'keys' $HCP_CRED_FILE
+
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
           log_success "Packer build initialized successfully."
@@ -304,6 +306,8 @@ jobs:
           log_info "Logging in to HCP..."
           hcp auth login --cred-file=$HCP_CRED_FILE
           log_success "Logged in to HCP successfully."
+
+          jq 'keys' $HCP_CRED_FILE
 
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
