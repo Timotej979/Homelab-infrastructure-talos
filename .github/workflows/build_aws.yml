@@ -71,6 +71,10 @@ jobs:
           export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
           log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
 
+          log_info "Logging in to HCP..."
+          hcp auth login
+          log_success "Logged in to HCP successfully."
+
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
           log_success "Packer build initialized successfully."
@@ -148,6 +152,10 @@ jobs:
           export HCP_CLIENT_ID=$(jq -r '.client_id' $HCP_CRED_FILE)
           export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
           log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
+
+          log_info "Logging in to HCP..."
+          hcp auth login
+          log_success "Logged in to HCP successfully."
 
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
@@ -229,6 +237,10 @@ jobs:
           export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
           log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
 
+          log_info "Logging in to HCP..."
+          hcp auth login
+          log_success "Logged in to HCP successfully."
+
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
           log_success "Packer build initialized successfully."
@@ -309,6 +321,10 @@ jobs:
           export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
           log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
 
+          log_info "Logging in to HCP..."
+          hcp auth login
+          log_success "Logged in to HCP successfully."
+
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
           log_success "Packer build initialized successfully."
@@ -386,6 +402,10 @@ jobs:
           export HCP_CLIENT_ID=$(jq -r '.client_id' $HCP_CRED_FILE)
           export HCP_CLIENT_SECRET=$(jq -r '.client_secret' $HCP_CRED_FILE)
           log_success "HCP credentials configured successfully from $HCP_CRED_FILE"
+
+          log_info "Logging in to HCP..."
+          hcp auth login
+          log_success "Logged in to HCP successfully."
 
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
