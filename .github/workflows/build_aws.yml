@@ -74,6 +74,9 @@ jobs:
           export HCP_CRED_FILE=$HCP_CRED_FILE
           log_success "HCP_CRED_FILE env var exported successfully."
 
+          echo "HCP_CRED_FILE=$HCP_CRED_FILE"
+          ls -lah "$(dirname "$HCP_CRED_FILE")"
+
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
           log_success "Packer build initialized successfully."
@@ -154,6 +157,9 @@ jobs:
           log_info "Export HCP_CRED_FILE env var for packer to use..."
           export HCP_CRED_FILE=$HCP_CRED_FILE
           log_success "HCP_CRED_FILE env var exported successfully."
+
+          echo "HCP_CRED_FILE=$HCP_CRED_FILE"
+          ls -lah "$(dirname "$HCP_CRED_FILE")"
 
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
@@ -238,6 +244,9 @@ jobs:
           export HCP_CRED_FILE=$HCP_CRED_FILE
           log_success "HCP_CRED_FILE env var exported successfully."
 
+          echo "HCP_CRED_FILE=$HCP_CRED_FILE"
+          ls -lah "$(dirname "$HCP_CRED_FILE")"
+
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
           log_success "Packer build initialized successfully."
@@ -321,6 +330,9 @@ jobs:
           export HCP_CRED_FILE=$HCP_CRED_FILE
           log_success "HCP_CRED_FILE env var exported successfully."
 
+          echo "HCP_CRED_FILE=$HCP_CRED_FILE"
+          ls -lah "$(dirname "$HCP_CRED_FILE")"
+
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
           log_success "Packer build initialized successfully."
@@ -402,6 +414,9 @@ jobs:
           export HCP_CRED_FILE=$HCP_CRED_FILE
           log_success "HCP_CRED_FILE env var exported successfully."
 
+          echo "HCP_CRED_FILE=$HCP_CRED_FILE"
+          ls -lah "$(dirname "$HCP_CRED_FILE")"
+
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
           log_success "Packer build initialized successfully."
@@ -482,6 +497,9 @@ jobs:
           log_info "Export HCP_CRED_FILE env var for packer to use..."
           export HCP_CRED_FILE=$HCP_CRED_FILE
           log_success "HCP_CRED_FILE env var exported successfully."
+
+          echo "HCP_CRED_FILE=$HCP_CRED_FILE"
+          ls -lah "$(dirname "$HCP_CRED_FILE")"
 
           log_info "Initializing Packer build..."
           packer init ./aws.pkr.hcl
