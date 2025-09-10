@@ -10,7 +10,7 @@ on:
 
 env:
   HCP_CLI_VERSION: "0.10.0"
-  PACKER_VERSION: "nightly"
+  PACKER_VERSION: "1.14.2"
 
 jobs:
   dev-arm64:
