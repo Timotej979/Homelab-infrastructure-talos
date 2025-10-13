@@ -149,6 +149,6 @@ jobs:
           path: packer-results.sarif
 
       - name: Upload Packer Validate results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: packer-results.sarif
