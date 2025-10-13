@@ -26,7 +26,7 @@ jobs:
         run: tfsec ./terraform --format sarif --out tfsec.sarif
 
       - name: Upload tfsec SARIF report to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: tfsec.sarif
 
@@ -55,7 +55,7 @@ jobs:
           soft_fail: true
 
       - name: Upload Checkov SARIF report to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: checkov.sarif
 
@@ -99,6 +99,6 @@ jobs:
           tflint --format sarif > tflint-${{ matrix.provider }}.sarif || true
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: terraform/${{ matrix.provider }}/tflint-${{ matrix.provider }}.sarif
