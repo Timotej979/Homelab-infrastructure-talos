@@ -74,7 +74,27 @@ data "aws_iam_policy_document" "packer_talos" {
     }
 
     #########################
-    # Describe AMIs
+    # Describe Regions (Required for Packer AMI discovery)
+    # Note: ec2:DescribeRegions does not support resource-level permissions
+    # checkov:skip=CKV_AWS_107:ec2:DescribeRegions does not support resource-level permissions and is restricted by region condition
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "ec2:DescribeRegions"
+        ]
+        resources = ["*"]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
+    }
+
+    #########################
+    # Describe AMIs (Required for Packer AMI discovery)
+    # Note: ec2:DescribeImages does not support resource-level permissions
+    # checkov:skip=CKV_AWS_107:ec2:DescribeImages does not support resource-level permissions and is restricted by region condition
     #########################
     statement {
         effect = "Allow"
@@ -105,22 +125,57 @@ data "aws_iam_policy_document" "packer_talos" {
     }
 
     #########################
-    # Describe VPCs/Subnets/SGs/KeyPairs
+    # Describe VPCs/Subnets/KeyPairs
     #########################
     statement {
         effect = "Allow"
         actions = [
             "ec2:DescribeVpcs",
             "ec2:DescribeSubnets",
-            "ec2:DescribeSecurityGroups",
             "ec2:DescribeKeyPairs"
         ]
         resources = [
             "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key-pair/*",
-            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:security-group/*",
             "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:subnet/*",
             "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:vpc/*"
         ]
+    }
+
+    #########################
+    # Describe Security Groups
+    # Note: ec2:DescribeSecurityGroups does not support resource-level permissions
+    # checkov:skip=CKV_AWS_107:ec2:DescribeSecurityGroups does not support resource-level permissions and is restricted by region condition
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "ec2:DescribeSecurityGroups"
+        ]
+        resources = ["*"]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
+    }
+
+    #########################
+    # EC2 KeyPair operations
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "ec2:CreateKeyPair",
+            "ec2:DeleteKeyPair"
+        ]
+        resources = [
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:key-pair/*"
+        ]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
     }
 
     #########################
@@ -132,7 +187,12 @@ data "aws_iam_policy_document" "packer_talos" {
             "ec2:RunInstances",
             "ec2:TerminateInstances",
             "ec2:StopInstances",
-            "ec2:StartInstances"
+            "ec2:StartInstances",
+            "ec2:RebootInstances",
+            "ec2:DescribeInstanceStatus",
+            "ec2:DescribeInstances",
+            "ec2:GetConsoleOutput",
+            "ec2:GetConsoleScreenshot"
         ]
         resources = [
             "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"
@@ -161,7 +221,138 @@ data "aws_iam_policy_document" "packer_talos" {
             "ec2:RevokeSecurityGroupIngress"
         ]
         resources = [
-            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:security-group/*"
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:security-group/*",
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:vpc/*"
+        ]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
+    }
+
+    #########################
+    # IAM permissions for EC2 instances
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "iam:PassRole"
+        ]
+        resources = [
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/*"
+        ]
+        condition {
+            test     = "StringEquals"
+            variable = "iam:PassedToService"
+            values   = ["ec2.amazonaws.com"]
+        }
+    }
+
+    #########################
+    # EC2 instance tagging operations
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "ec2:CreateTags",
+            "ec2:DeleteTags"
+        ]
+        resources = [
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*",
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:image/*",
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:snapshot/*",
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:volume/*"
+        ]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
+    }
+
+    #########################
+    # EC2 instance attribute operations
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "ec2:ModifyInstanceAttribute"
+        ]
+        resources = [
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"
+        ]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
+    }
+
+    #########################
+    # EC2 describe operations
+    # Note: These actions do not support resource-level permissions
+    # checkov:skip=CKV_AWS_107:ec2:DescribeAvailabilityZones and ec2:DescribeAccountAttributes do not support resource-level permissions
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "ec2:DescribeAvailabilityZones",
+            "ec2:DescribeAccountAttributes"
+        ]
+        resources = ["*"]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
+    }
+
+    #########################
+    # EBS volume operations
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "ec2:CreateVolume",
+            "ec2:DeleteVolume",
+            "ec2:AttachVolume",
+            "ec2:DetachVolume",
+            "ec2:DescribeVolumes",
+            "ec2:DescribeVolumeAttribute",
+            "ec2:ModifyVolumeAttribute"
+        ]
+        resources = [
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:volume/*"
+        ]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
+    }
+
+    #########################
+    # EC2 Network interface operations
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "ec2:CreateNetworkInterface",
+            "ec2:DeleteNetworkInterface",
+            "ec2:AttachNetworkInterface",
+            "ec2:DetachNetworkInterface",
+            "ec2:DescribeNetworkInterfaces",
+            "ec2:ModifyNetworkInterfaceAttribute",
+            "ec2:AssociateAddress",
+            "ec2:DisassociateAddress",
+            "ec2:AllocateAddress",
+            "ec2:ReleaseAddress",
+            "ec2:DescribeAddresses"
+        ]
+        resources = [
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:network-interface/*",
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:elastic-ip/*"
         ]
         condition {
             test     = "StringEquals"
@@ -180,6 +371,8 @@ data "aws_iam_policy_document" "packer_talos" {
             "ec2:RegisterImage",
             "ec2:DeregisterImage",
             "ec2:ModifyImageAttribute",
+            "ec2:DescribeImages",
+            "ec2:DescribeImageAttribute",
             "ec2:CreateTags",
             "ec2:DeleteTags"
         ]
@@ -189,7 +382,7 @@ data "aws_iam_policy_document" "packer_talos" {
         condition {
             test     = "StringLike"
             variable = "ec2:ImageName"
-            values   = ["talos-system-disk-*"]
+            values   = ["talos-*"]
         }
         condition {
             test     = "StringEquals"
