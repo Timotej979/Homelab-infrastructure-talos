@@ -26,7 +26,7 @@ variable "workload_identity_providers_config" {
             actor_claim                = "Timotej979"
             repository_claim           = "Timotej979/Homelab-infrastructure-talos"
             ref_claim                  = "refs/heads/main"
-            allowed_ec2_instance_types = ["t4g.medium"]
+            allowed_ec2_instance_types = ["t4g.medium", "t3a.medium"]
             workflow_ref_claims        = [
                 "Timotej979/Homelab-infrastructure-talos/.github/workflows/build_aws.yml@refs/heads/main"
             ]
@@ -36,7 +36,7 @@ variable "workload_identity_providers_config" {
             actor_claim                = "Timotej979"
             repository_claim           = "Timotej979/Homelab-infrastructure-talos"
             ref_claim                  = "refs/heads/stage"
-            allowed_ec2_instance_types = ["t4g.medium"]
+            allowed_ec2_instance_types = ["t4g.medium", "t3a.medium"]
             workflow_ref_claims        = [
                 "Timotej979/Homelab-infrastructure-talos/.github/workflows/build_aws.yml@refs/heads/stage"
             ]
@@ -46,7 +46,7 @@ variable "workload_identity_providers_config" {
             actor_claim                = "Timotej979"
             repository_claim           = "Timotej979/Homelab-infrastructure-talos"
             ref_claim                  = "refs/heads/dev"
-            allowed_ec2_instance_types = ["t4g.medium"]
+            allowed_ec2_instance_types = ["t4g.medium", "t3a.medium"]
             workflow_ref_claims        = [
                 "Timotej979/Homelab-infrastructure-talos/.github/workflows/build_aws.yml@refs/heads/dev"
             ]
