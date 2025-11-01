@@ -164,9 +164,36 @@ build {
             fi
 
             echo "✅ Found secondary block device: $SEC_PATH"
+            
+            # Verify uploaded file exists and is not empty
+            if [ ! -f /tmp/talos.raw.xz ]; then
+                echo "❌ File /tmp/talos.raw.xz does not exist"
+                exit 1
+            fi
+            
+            FILE_SIZE=$(stat -c%s /tmp/talos.raw.xz)
+            if [ "$FILE_SIZE" -eq 0 ]; then
+                echo "❌ File /tmp/talos.raw.xz is empty (size: $FILE_SIZE)"
+                exit 1
+            fi
+            echo "✅ File size check passed: $FILE_SIZE bytes"
+            
+            # Test xz file integrity before decompression
+            echo "✅ Verifying xz file integrity..."
+            if ! xz -t /tmp/talos.raw.xz; then
+                echo "❌ xz file integrity check failed - file may be corrupted"
+                exit 1
+            fi
+            echo "✅ xz file integrity check passed"
+            
             echo "✅ Writing Talos raw image to $SEC_PATH..."
-            sudo xzcat /tmp/talos.raw.xz | sudo dd of=$SEC_PATH bs=1M conv=fsync status=progress
+            # Use xz -dc instead of xzcat for better error handling
+            if ! sudo xz -dc /tmp/talos.raw.xz | sudo dd of=$SEC_PATH bs=1M conv=fsync status=progress; then
+                echo "❌ Failed to write image to $SEC_PATH"
+                exit 1
+            fi
             sync
+            echo "✅ Image written successfully"
             EOF
         ]
     }

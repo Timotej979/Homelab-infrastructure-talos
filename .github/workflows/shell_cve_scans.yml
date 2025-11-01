@@ -1,4 +1,4 @@
-name: ShellCheck Scan
+name: Shell CVE Scan
 
 permissions:
   security-events: write
@@ -11,7 +11,7 @@ on:
     branches: [main, stage, dev]
 
 jobs:
-  shellcheck:
+  shellcheck_scan:
     name: ShellCheck Scan
     runs-on: ubuntu-24.04
     strategy:
