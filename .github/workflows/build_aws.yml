@@ -107,13 +107,27 @@ jobs:
           
           log_info "Promoting image to aws-dev-arm64 channel..."
           
-          # Get HCP access token from credential file
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          # Get HCP access token - refresh authentication to get fresh token after long build
+          log_info "Refreshing HCP authentication to obtain access token..."
+          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
           
-          if [ -z "$HCP_ACCESS_TOKEN" ]; then
-            log_error "Failed to extract HCP access token from credential file"
+          # Extract access token from credential file (should be fresh after re-login)
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to extract HCP access token from credential file after refresh"
+            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             exit 1
           fi
+          
+          # Verify token is not empty or just whitespace
+          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
+            log_error "HCP access token is empty or whitespace only"
+            exit 1
+          fi
+          
+          log_info "Successfully obtained HCP access token"
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
@@ -261,13 +275,27 @@ jobs:
           
           log_info "Promoting image to aws-dev-amd64 channel..."
           
-          # Get HCP access token from credential file
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          # Get HCP access token - refresh authentication to get fresh token after long build
+          log_info "Refreshing HCP authentication to obtain access token..."
+          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
           
-          if [ -z "$HCP_ACCESS_TOKEN" ]; then
-            log_error "Failed to extract HCP access token from credential file"
+          # Extract access token from credential file (should be fresh after re-login)
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to extract HCP access token from credential file after refresh"
+            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             exit 1
           fi
+          
+          # Verify token is not empty or just whitespace
+          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
+            log_error "HCP access token is empty or whitespace only"
+            exit 1
+          fi
+          
+          log_info "Successfully obtained HCP access token"
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
@@ -417,13 +445,27 @@ jobs:
           
           log_info "Promoting image to aws-stage-arm64 channel..."
           
-          # Get HCP access token from credential file
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          # Get HCP access token - refresh authentication to get fresh token after long build
+          log_info "Refreshing HCP authentication to obtain access token..."
+          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
           
-          if [ -z "$HCP_ACCESS_TOKEN" ]; then
-            log_error "Failed to extract HCP access token from credential file"
+          # Extract access token from credential file (should be fresh after re-login)
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to extract HCP access token from credential file after refresh"
+            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             exit 1
           fi
+          
+          # Verify token is not empty or just whitespace
+          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
+            log_error "HCP access token is empty or whitespace only"
+            exit 1
+          fi
+          
+          log_info "Successfully obtained HCP access token"
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
@@ -573,13 +615,27 @@ jobs:
           
           log_info "Promoting image to aws-stage-amd64 channel..."
           
-          # Get HCP access token from credential file
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          # Get HCP access token - refresh authentication to get fresh token after long build
+          log_info "Refreshing HCP authentication to obtain access token..."
+          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
           
-          if [ -z "$HCP_ACCESS_TOKEN" ]; then
-            log_error "Failed to extract HCP access token from credential file"
+          # Extract access token from credential file (should be fresh after re-login)
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to extract HCP access token from credential file after refresh"
+            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             exit 1
           fi
+          
+          # Verify token is not empty or just whitespace
+          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
+            log_error "HCP access token is empty or whitespace only"
+            exit 1
+          fi
+          
+          log_info "Successfully obtained HCP access token"
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
@@ -727,13 +783,27 @@ jobs:
           
           log_info "Promoting image to aws-prod-arm64 channel..."
           
-          # Get HCP access token from credential file
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          # Get HCP access token - refresh authentication to get fresh token after long build
+          log_info "Refreshing HCP authentication to obtain access token..."
+          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
           
-          if [ -z "$HCP_ACCESS_TOKEN" ]; then
-            log_error "Failed to extract HCP access token from credential file"
+          # Extract access token from credential file (should be fresh after re-login)
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to extract HCP access token from credential file after refresh"
+            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             exit 1
           fi
+          
+          # Verify token is not empty or just whitespace
+          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
+            log_error "HCP access token is empty or whitespace only"
+            exit 1
+          fi
+          
+          log_info "Successfully obtained HCP access token"
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
@@ -881,13 +951,27 @@ jobs:
           
           log_info "Promoting image to aws-prod-amd64 channel..."
           
-          # Get HCP access token from credential file
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          # Get HCP access token - refresh authentication to get fresh token after long build
+          log_info "Refreshing HCP authentication to obtain access token..."
+          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
           
-          if [ -z "$HCP_ACCESS_TOKEN" ]; then
-            log_error "Failed to extract HCP access token from credential file"
+          # Extract access token from credential file (should be fresh after re-login)
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to extract HCP access token from credential file after refresh"
+            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             exit 1
           fi
+          
+          # Verify token is not empty or just whitespace
+          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
+            log_error "HCP access token is empty or whitespace only"
+            exit 1
+          fi
+          
+          log_info "Successfully obtained HCP access token"
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
