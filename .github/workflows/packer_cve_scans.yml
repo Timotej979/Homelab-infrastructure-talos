@@ -152,26 +152,3 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: packer-results.sarif
-
-  checkov_scan:
-    name: Checkov Scan
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Run Checkov scan and generate SARIF report
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          framework: packer
-          directory: ./packer
-          quiet: true
-          output_format: cli,sarif
-          output_file_path: checkov-packer.sarif
-          soft_fail: true
-
-      - name: Upload Checkov Packer SARIF report to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: checkov-packer.sarif

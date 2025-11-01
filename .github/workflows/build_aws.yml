@@ -79,18 +79,16 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          # Stream output to logs while also capturing it to a variable
-          PACKER_LOG_FILE=$(mktemp)
-          packer build \
+          PACKER_OUTPUT=$(packer build \
             -var "channel=aws-dev-arm64" \
             -var "aws_instance_type=t4g.medium" \
             -var "talos_version=latest" \
             -var "talos_architecture=arm64" \
             -var "talos_extensions=[]" \
-            ./aws.pkr.hcl 2>&1 | tee "$PACKER_LOG_FILE"
-          PACKER_EXIT_CODE=${PIPESTATUS[0]}
-          PACKER_OUTPUT=$(cat "$PACKER_LOG_FILE")
-          rm -f "$PACKER_LOG_FILE"
+            ./aws.pkr.hcl 2>&1)
+          PACKER_EXIT_CODE=$?
+          
+          echo "$PACKER_OUTPUT"
           
           if [ $PACKER_EXIT_CODE -ne 0 ]; then
             log_error "Packer build failed with exit code $PACKER_EXIT_CODE"
@@ -118,11 +116,18 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp organizations list'"
+            log_error "Command output: $ORG_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
             log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
@@ -131,11 +136,18 @@ jobs:
           log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp projects list'"
+            log_error "Command output: $PROJECT_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
             log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
@@ -258,11 +270,18 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp organizations list'"
+            log_error "Command output: $ORG_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
             log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
@@ -271,11 +290,18 @@ jobs:
           log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp projects list'"
+            log_error "Command output: $PROJECT_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
             log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
@@ -400,11 +426,18 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp organizations list'"
+            log_error "Command output: $ORG_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
             log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
@@ -413,11 +446,18 @@ jobs:
           log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp projects list'"
+            log_error "Command output: $PROJECT_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
             log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
@@ -542,11 +582,18 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp organizations list'"
+            log_error "Command output: $ORG_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
             log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
@@ -555,11 +602,18 @@ jobs:
           log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp projects list'"
+            log_error "Command output: $PROJECT_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
             log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
@@ -682,11 +736,18 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp organizations list'"
+            log_error "Command output: $ORG_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
             log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
@@ -695,11 +756,18 @@ jobs:
           log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp projects list'"
+            log_error "Command output: $PROJECT_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
             log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
@@ -822,11 +890,18 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp organizations list'"
+            log_error "Command output: $ORG_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
             log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
@@ -835,11 +910,18 @@ jobs:
           log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
+          if [ $? -ne 0 ]; then
+            log_error "Failed to run 'hcp projects list'"
+            log_error "Command output: $PROJECT_JSON_OUTPUT"
+            exit 1
+          fi
           
-          if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'."
+          # Parse JSON array: [{"id": "...", ...}]
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
             log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
