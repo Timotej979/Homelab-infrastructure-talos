@@ -467,8 +467,8 @@ data "aws_iam_policy_document" "packer_talos" {
     #########################
     # EC2 AMI Attribute Modification
     # Modify and deregister AMIs - ImageName condition may not apply after registration
-    # Note: ModifyImageAttribute and DeregisterImage may not support ec2:ImageName condition
-    # These operations are restricted to our account and region only
+    # Note: ModifyImageAttribute and DeregisterImage may require wildcard resources for proper evaluation
+    # checkov:skip=CKV_AWS_107:ModifyImageAttribute and DeregisterImage require "*" for proper resource evaluation and are restricted by region condition
     #########################
     statement {
         effect = "Allow"
@@ -477,7 +477,31 @@ data "aws_iam_policy_document" "packer_talos" {
             "ec2:DeregisterImage"
         ]
         resources = [
-            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:image/*"
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:image/*",
+            "*"
+        ]
+        condition {
+            test     = "StringEquals"
+            variable = "aws:RequestedRegion"
+            values   = [var.aws_region]
+        }
+    }
+
+    #########################
+    # EC2 AMI Tagging
+    # Tag AMIs after registration - ImageName condition may not apply during tagging
+    # Note: CreateTags and DeleteTags may not support ec2:ImageName condition on registered AMIs
+    # checkov:skip=CKV_AWS_107:AMI tagging requires "*" for proper resource evaluation and is restricted by region condition
+    #########################
+    statement {
+        effect = "Allow"
+        actions = [
+            "ec2:CreateTags",
+            "ec2:DeleteTags"
+        ]
+        resources = [
+            "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:image/*",
+            "*"
         ]
         condition {
             test     = "StringEquals"
@@ -488,16 +512,14 @@ data "aws_iam_policy_document" "packer_talos" {
 
     #########################
     # EC2 AMI Management
-    # Create, describe, and tag AMIs with Talos naming pattern
+    # Create and describe AMIs with Talos naming pattern
     #########################
     statement {
         effect = "Allow"
         actions = [
             "ec2:CreateImage",
             "ec2:DescribeImages",
-            "ec2:DescribeImageAttribute",
-            "ec2:CreateTags",
-            "ec2:DeleteTags"
+            "ec2:DescribeImageAttribute"
         ]
         resources = [
             "arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:image/*"

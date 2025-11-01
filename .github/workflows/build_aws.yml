@@ -79,20 +79,69 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build \
+          PACKER_OUTPUT=$(packer build \
             -var "channel=aws-dev-arm64" \
             -var "aws_instance_type=t4g.medium" \
             -var "talos_version=latest" \
             -var "talos_architecture=arm64" \
             -var "talos_extensions=[]" \
-            ./aws.pkr.hcl
-          log_success "AWS image built successfully."
+            ./aws.pkr.hcl 2>&1)
           
-          log_info "Promoting image to aws-dev channel..."
-          hcp packer channels use \
-            --bucket homelab-infrastructure-talos \
-            --channel aws-dev-arm64 \
-            --version latest
+          echo "$PACKER_OUTPUT"
+          
+          # Extract iteration ID from Packer output (the version fingerprint)
+          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
+          
+          if [ -z "$ITERATION_ID" ]; then
+            log_error "Failed to extract iteration ID from Packer output"
+            exit 1
+          fi
+          
+          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
+          
+          log_info "Promoting image to aws-dev-arm64 channel..."
+          
+          # Get HCP access token from credential file
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ]; then
+            log_error "Failed to extract HCP access token from credential file"
+            exit 1
+          fi
+          
+          # Get organization ID using HCP CLI (service principals can list their orgs)
+          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ORG_ID" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
+          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_PROJECT_ID" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
+          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
+          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
+          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-dev-arm64" \
+            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
+          
+          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
+          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            exit 1
+          fi
+          
           log_success "Image promoted to aws-dev-arm64 channel."
 
   dev-amd64:
@@ -161,20 +210,69 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build \
+          PACKER_OUTPUT=$(packer build \
             -var "channel=aws-dev-amd64" \
             -var "aws_instance_type=t3a.medium" \
             -var "talos_version=latest" \
             -var "talos_architecture=amd64" \
             -var "talos_extensions=[]" \
-            ./aws.pkr.hcl
-          log_success "AWS image built successfully."
-
+            ./aws.pkr.hcl 2>&1)
+          
+          echo "$PACKER_OUTPUT"
+          
+          # Extract iteration ID from Packer output (the version fingerprint)
+          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
+          
+          if [ -z "$ITERATION_ID" ]; then
+            log_error "Failed to extract iteration ID from Packer output"
+            exit 1
+          fi
+          
+          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
+          
           log_info "Promoting image to aws-dev-amd64 channel..."
-          hcp packer channels use \
-            --bucket homelab-infrastructure-talos \
-            --channel aws-dev-amd64 \
-            --version latest
+          
+          # Get HCP access token from credential file
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ]; then
+            log_error "Failed to extract HCP access token from credential file"
+            exit 1
+          fi
+          
+          # Get organization ID using HCP CLI (service principals can list their orgs)
+          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ORG_ID" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
+          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_PROJECT_ID" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
+          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
+          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
+          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-dev-amd64" \
+            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
+          
+          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
+          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            exit 1
+          fi
+          
           log_success "Image promoted to aws-dev-amd64 channel."
 
   stage-arm64:
@@ -245,20 +343,69 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build \
+          PACKER_OUTPUT=$(packer build \
             -var "channel=aws-stage-arm64" \
             -var "aws_instance_type=t4g.medium" \
             -var "talos_version=latest" \
             -var "talos_architecture=arm64" \
             -var "talos_extensions=[]" \
-            ./aws.pkr.hcl
-          log_success "AWS image built successfully."
-
+            ./aws.pkr.hcl 2>&1)
+          
+          echo "$PACKER_OUTPUT"
+          
+          # Extract iteration ID from Packer output (the version fingerprint)
+          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
+          
+          if [ -z "$ITERATION_ID" ]; then
+            log_error "Failed to extract iteration ID from Packer output"
+            exit 1
+          fi
+          
+          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
+          
           log_info "Promoting image to aws-stage-arm64 channel..."
-          hcp packer channels use \
-            --bucket homelab-infrastructure-talos \
-            --channel aws-stage-arm64 \
-            --version latest
+          
+          # Get HCP access token from credential file
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ]; then
+            log_error "Failed to extract HCP access token from credential file"
+            exit 1
+          fi
+          
+          # Get organization ID using HCP CLI (service principals can list their orgs)
+          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ORG_ID" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
+          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_PROJECT_ID" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
+          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
+          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
+          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-stage-arm64" \
+            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
+          
+          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
+          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            exit 1
+          fi
+          
           log_success "Image promoted to aws-stage-arm64 channel."
 
   stage-amd64:
@@ -329,20 +476,69 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build \
+          PACKER_OUTPUT=$(packer build \
             -var "channel=aws-stage-amd64" \
             -var "aws_instance_type=t3a.medium" \
             -var "talos_version=latest" \
             -var "talos_architecture=amd64" \
             -var "talos_extensions=[]" \
-            ./aws.pkr.hcl
-          log_success "AWS image built successfully."
-
+            ./aws.pkr.hcl 2>&1)
+          
+          echo "$PACKER_OUTPUT"
+          
+          # Extract iteration ID from Packer output (the version fingerprint)
+          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
+          
+          if [ -z "$ITERATION_ID" ]; then
+            log_error "Failed to extract iteration ID from Packer output"
+            exit 1
+          fi
+          
+          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
+          
           log_info "Promoting image to aws-stage-amd64 channel..."
-          hcp packer channels use \
-            --bucket homelab-infrastructure-talos \
-            --channel aws-stage-amd64 \
-            --version latest
+          
+          # Get HCP access token from credential file
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ]; then
+            log_error "Failed to extract HCP access token from credential file"
+            exit 1
+          fi
+          
+          # Get organization ID using HCP CLI (service principals can list their orgs)
+          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ORG_ID" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
+          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_PROJECT_ID" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
+          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
+          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
+          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-stage-amd64" \
+            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
+          
+          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
+          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            exit 1
+          fi
+          
           log_success "Image promoted to aws-stage-amd64 channel."
 
   prod-arm64:
@@ -411,20 +607,69 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build \
+          PACKER_OUTPUT=$(packer build \
             -var "channel=aws-prod-arm64" \
             -var "aws_instance_type=t4g.medium" \
             -var "talos_version=latest" \
             -var "talos_architecture=arm64" \
             -var "talos_extensions=[]" \
-            ./aws.pkr.hcl
-          log_success "AWS image built successfully."
-
+            ./aws.pkr.hcl 2>&1)
+          
+          echo "$PACKER_OUTPUT"
+          
+          # Extract iteration ID from Packer output (the version fingerprint)
+          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
+          
+          if [ -z "$ITERATION_ID" ]; then
+            log_error "Failed to extract iteration ID from Packer output"
+            exit 1
+          fi
+          
+          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
+          
           log_info "Promoting image to aws-prod-arm64 channel..."
-          hcp packer channels use \
-            --bucket homelab-infrastructure-talos \
-            --channel aws-prod-arm64 \
-            --version latest
+          
+          # Get HCP access token from credential file
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ]; then
+            log_error "Failed to extract HCP access token from credential file"
+            exit 1
+          fi
+          
+          # Get organization ID using HCP CLI (service principals can list their orgs)
+          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ORG_ID" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
+          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_PROJECT_ID" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
+          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
+          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
+          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-prod-arm64" \
+            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
+          
+          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
+          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            exit 1
+          fi
+          
           log_success "Image promoted to aws-prod-arm64 channel."
 
   prod-amd64:
@@ -493,18 +738,67 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          packer build \
+          PACKER_OUTPUT=$(packer build \
             -var "channel=aws-prod-amd64" \
             -var "aws_instance_type=t3a.medium" \
             -var "talos_version=latest" \
             -var "talos_architecture=amd64" \
             -var "talos_extensions=[]" \
-            ./aws.pkr.hcl
-          log_success "AWS image built successfully."
-
+            ./aws.pkr.hcl 2>&1)
+          
+          echo "$PACKER_OUTPUT"
+          
+          # Extract iteration ID from Packer output (the version fingerprint)
+          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
+          
+          if [ -z "$ITERATION_ID" ]; then
+            log_error "Failed to extract iteration ID from Packer output"
+            exit 1
+          fi
+          
+          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
+          
           log_info "Promoting image to aws-prod-amd64 channel..."
-          hcp packer channels use \
-            --bucket homelab-infrastructure-talos \
-            --channel aws-prod-amd64 \
-            --version latest
+          
+          # Get HCP access token from credential file
+          HCP_ACCESS_TOKEN=$(jq -r '.access_token' "$HCP_CRED_FILE" 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ]; then
+            log_error "Failed to extract HCP access token from credential file"
+            exit 1
+          fi
+          
+          # Get organization ID using HCP CLI (service principals can list their orgs)
+          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_ORG_ID" ]; then
+            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
+          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          
+          if [ -z "$HCP_PROJECT_ID" ]; then
+            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            exit 1
+          fi
+          
+          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
+          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
+          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
+          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-prod-amd64" \
+            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
+          
+          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
+          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            exit 1
+          fi
+          
           log_success "Image promoted to aws-prod-amd64 channel."
