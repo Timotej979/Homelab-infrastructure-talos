@@ -182,11 +182,16 @@ jobs:
             exit 1
           fi
           
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // empty' 2>/dev/null)
+          # Check response structure (safe - only logs keys, not values)
+          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
+          
+          # Try to extract access token - check multiple possible field names
+          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
+            log_error "Response contains keys: $RESPONSE_KEYS"
             exit 1
           fi
           
@@ -409,11 +414,16 @@ jobs:
             exit 1
           fi
           
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // empty' 2>/dev/null)
+          # Check response structure (safe - only logs keys, not values)
+          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
+          
+          # Try to extract access token - check multiple possible field names
+          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
+            log_error "Response contains keys: $RESPONSE_KEYS"
             exit 1
           fi
           
@@ -638,11 +648,16 @@ jobs:
             exit 1
           fi
           
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // empty' 2>/dev/null)
+          # Check response structure (safe - only logs keys, not values)
+          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
+          
+          # Try to extract access token - check multiple possible field names
+          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
+            log_error "Response contains keys: $RESPONSE_KEYS"
             exit 1
           fi
           
@@ -867,11 +882,16 @@ jobs:
             exit 1
           fi
           
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // empty' 2>/dev/null)
+          # Check response structure (safe - only logs keys, not values)
+          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
+          
+          # Try to extract access token - check multiple possible field names
+          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
+            log_error "Response contains keys: $RESPONSE_KEYS"
             exit 1
           fi
           
@@ -1094,11 +1114,16 @@ jobs:
             exit 1
           fi
           
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // empty' 2>/dev/null)
+          # Check response structure (safe - only logs keys, not values)
+          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
+          
+          # Try to extract access token - check multiple possible field names
+          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
+            log_error "Response contains keys: $RESPONSE_KEYS"
             exit 1
           fi
           
@@ -1321,11 +1346,16 @@ jobs:
             exit 1
           fi
           
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // empty' 2>/dev/null)
+          # Check response structure (safe - only logs keys, not values)
+          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
+          
+          # Try to extract access token - check multiple possible field names
+          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
+            log_error "Response contains keys: $RESPONSE_KEYS"
             exit 1
           fi
           
