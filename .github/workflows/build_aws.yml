@@ -111,13 +111,21 @@ jobs:
           # Use GitHub Actions OIDC token with workload identity provider URL
           log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Get workload identity provider URL from credential file
-          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider configuration from credential file
+          # The workload.url is actually a JSON object with url, headers, format_type, etc.
+          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
+            log_error "Failed to extract workload identity provider configuration from credential file"
+            exit 1
+          fi
+          
+          # Extract the actual URL and headers from the workload identity provider configuration
+          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
+          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
           
           if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract workload identity provider URL from credential file"
-            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
-            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
+            log_error "Failed to extract URL from workload identity provider configuration"
             exit 1
           fi
           
@@ -135,17 +143,32 @@ jobs:
           
           if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
             log_error "Failed to obtain GitHub OIDC token"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
             exit 1
           fi
           
           # Exchange GitHub OIDC token for HCP access token using workload identity provider
           log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          log_info "Workload identity provider URL: $WIP_URL"
           
+          # Build curl command with headers from WIP config
+          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
+          
+          # Add optional headers from WIP config if present
+          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
+            # Extract headers and add to array (avoiding subshell issues)
+            while IFS= read -r header_line; do
+              if [ -n "$header_line" ]; then
+                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
+                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
+                if [ -n "$key" ] && [ -n "$value" ]; then
+                  CURL_HEADERS+=(-H "${key}: ${value}")
+                fi
+              fi
+            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
+          fi
+          
+          # Execute curl with headers and form data
           TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
+            "${CURL_HEADERS[@]}" \
             -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
             -d "subject_token=$GITHUB_OIDC_TOKEN" \
             -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
@@ -156,7 +179,6 @@ jobs:
           
           if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
             log_error "Token exchange failed with HTTP $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -165,7 +187,6 @@ jobs:
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -175,7 +196,6 @@ jobs:
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp organizations list'"
-            log_error "Command output: $ORG_JSON_OUTPUT"
             exit 1
           fi
           
@@ -183,8 +203,7 @@ jobs:
           HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
-            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
             exit 1
           fi
           
@@ -195,7 +214,6 @@ jobs:
           PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp projects list'"
-            log_error "Command output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
           
@@ -203,8 +221,7 @@ jobs:
           HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
-            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
             exit 1
           fi
           
@@ -223,7 +240,7 @@ jobs:
           RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
           
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
             exit 1
           fi
           
@@ -321,13 +338,21 @@ jobs:
           # Use GitHub Actions OIDC token with workload identity provider URL
           log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Get workload identity provider URL from credential file
-          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider configuration from credential file
+          # The workload.url is actually a JSON object with url, headers, format_type, etc.
+          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
+            log_error "Failed to extract workload identity provider configuration from credential file"
+            exit 1
+          fi
+          
+          # Extract the actual URL and headers from the workload identity provider configuration
+          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
+          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
           
           if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract workload identity provider URL from credential file"
-            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
-            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
+            log_error "Failed to extract URL from workload identity provider configuration"
             exit 1
           fi
           
@@ -345,17 +370,32 @@ jobs:
           
           if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
             log_error "Failed to obtain GitHub OIDC token"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
             exit 1
           fi
           
           # Exchange GitHub OIDC token for HCP access token using workload identity provider
           log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          log_info "Workload identity provider URL: $WIP_URL"
           
+          # Build curl command with headers from WIP config
+          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
+          
+          # Add optional headers from WIP config if present
+          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
+            # Extract headers and add to array (avoiding subshell issues)
+            while IFS= read -r header_line; do
+              if [ -n "$header_line" ]; then
+                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
+                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
+                if [ -n "$key" ] && [ -n "$value" ]; then
+                  CURL_HEADERS+=(-H "${key}: ${value}")
+                fi
+              fi
+            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
+          fi
+          
+          # Execute curl with headers and form data
           TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
+            "${CURL_HEADERS[@]}" \
             -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
             -d "subject_token=$GITHUB_OIDC_TOKEN" \
             -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
@@ -366,7 +406,6 @@ jobs:
           
           if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
             log_error "Token exchange failed with HTTP $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -375,7 +414,6 @@ jobs:
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -385,7 +423,6 @@ jobs:
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp organizations list'"
-            log_error "Command output: $ORG_JSON_OUTPUT"
             exit 1
           fi
           
@@ -393,8 +430,7 @@ jobs:
           HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
-            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
             exit 1
           fi
           
@@ -405,7 +441,6 @@ jobs:
           PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp projects list'"
-            log_error "Command output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
           
@@ -413,8 +448,7 @@ jobs:
           HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
-            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
             exit 1
           fi
           
@@ -433,7 +467,7 @@ jobs:
           RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
           
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
             exit 1
           fi
           
@@ -533,13 +567,21 @@ jobs:
           # Use GitHub Actions OIDC token with workload identity provider URL
           log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Get workload identity provider URL from credential file
-          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider configuration from credential file
+          # The workload.url is actually a JSON object with url, headers, format_type, etc.
+          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
+            log_error "Failed to extract workload identity provider configuration from credential file"
+            exit 1
+          fi
+          
+          # Extract the actual URL and headers from the workload identity provider configuration
+          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
+          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
           
           if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract workload identity provider URL from credential file"
-            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
-            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
+            log_error "Failed to extract URL from workload identity provider configuration"
             exit 1
           fi
           
@@ -557,17 +599,32 @@ jobs:
           
           if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
             log_error "Failed to obtain GitHub OIDC token"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
             exit 1
           fi
           
           # Exchange GitHub OIDC token for HCP access token using workload identity provider
           log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          log_info "Workload identity provider URL: $WIP_URL"
           
+          # Build curl command with headers from WIP config
+          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
+          
+          # Add optional headers from WIP config if present
+          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
+            # Extract headers and add to array (avoiding subshell issues)
+            while IFS= read -r header_line; do
+              if [ -n "$header_line" ]; then
+                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
+                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
+                if [ -n "$key" ] && [ -n "$value" ]; then
+                  CURL_HEADERS+=(-H "${key}: ${value}")
+                fi
+              fi
+            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
+          fi
+          
+          # Execute curl with headers and form data
           TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
+            "${CURL_HEADERS[@]}" \
             -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
             -d "subject_token=$GITHUB_OIDC_TOKEN" \
             -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
@@ -578,7 +635,6 @@ jobs:
           
           if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
             log_error "Token exchange failed with HTTP $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -587,7 +643,6 @@ jobs:
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -597,7 +652,6 @@ jobs:
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp organizations list'"
-            log_error "Command output: $ORG_JSON_OUTPUT"
             exit 1
           fi
           
@@ -605,8 +659,7 @@ jobs:
           HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
-            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
             exit 1
           fi
           
@@ -617,7 +670,6 @@ jobs:
           PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp projects list'"
-            log_error "Command output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
           
@@ -625,8 +677,7 @@ jobs:
           HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
-            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
             exit 1
           fi
           
@@ -645,7 +696,7 @@ jobs:
           RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
           
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
             exit 1
           fi
           
@@ -745,13 +796,21 @@ jobs:
           # Use GitHub Actions OIDC token with workload identity provider URL
           log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Get workload identity provider URL from credential file
-          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider configuration from credential file
+          # The workload.url is actually a JSON object with url, headers, format_type, etc.
+          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
+            log_error "Failed to extract workload identity provider configuration from credential file"
+            exit 1
+          fi
+          
+          # Extract the actual URL and headers from the workload identity provider configuration
+          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
+          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
           
           if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract workload identity provider URL from credential file"
-            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
-            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
+            log_error "Failed to extract URL from workload identity provider configuration"
             exit 1
           fi
           
@@ -769,17 +828,32 @@ jobs:
           
           if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
             log_error "Failed to obtain GitHub OIDC token"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
             exit 1
           fi
           
           # Exchange GitHub OIDC token for HCP access token using workload identity provider
           log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          log_info "Workload identity provider URL: $WIP_URL"
           
+          # Build curl command with headers from WIP config
+          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
+          
+          # Add optional headers from WIP config if present
+          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
+            # Extract headers and add to array (avoiding subshell issues)
+            while IFS= read -r header_line; do
+              if [ -n "$header_line" ]; then
+                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
+                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
+                if [ -n "$key" ] && [ -n "$value" ]; then
+                  CURL_HEADERS+=(-H "${key}: ${value}")
+                fi
+              fi
+            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
+          fi
+          
+          # Execute curl with headers and form data
           TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
+            "${CURL_HEADERS[@]}" \
             -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
             -d "subject_token=$GITHUB_OIDC_TOKEN" \
             -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
@@ -790,7 +864,6 @@ jobs:
           
           if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
             log_error "Token exchange failed with HTTP $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -799,7 +872,6 @@ jobs:
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -809,7 +881,6 @@ jobs:
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp organizations list'"
-            log_error "Command output: $ORG_JSON_OUTPUT"
             exit 1
           fi
           
@@ -817,8 +888,7 @@ jobs:
           HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
-            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
             exit 1
           fi
           
@@ -829,7 +899,6 @@ jobs:
           PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp projects list'"
-            log_error "Command output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
           
@@ -837,8 +906,7 @@ jobs:
           HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
-            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
             exit 1
           fi
           
@@ -857,7 +925,7 @@ jobs:
           RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
           
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
             exit 1
           fi
           
@@ -955,13 +1023,21 @@ jobs:
           # Use GitHub Actions OIDC token with workload identity provider URL
           log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Get workload identity provider URL from credential file
-          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider configuration from credential file
+          # The workload.url is actually a JSON object with url, headers, format_type, etc.
+          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
+            log_error "Failed to extract workload identity provider configuration from credential file"
+            exit 1
+          fi
+          
+          # Extract the actual URL and headers from the workload identity provider configuration
+          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
+          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
           
           if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract workload identity provider URL from credential file"
-            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
-            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
+            log_error "Failed to extract URL from workload identity provider configuration"
             exit 1
           fi
           
@@ -979,17 +1055,32 @@ jobs:
           
           if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
             log_error "Failed to obtain GitHub OIDC token"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
             exit 1
           fi
           
           # Exchange GitHub OIDC token for HCP access token using workload identity provider
           log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          log_info "Workload identity provider URL: $WIP_URL"
           
+          # Build curl command with headers from WIP config
+          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
+          
+          # Add optional headers from WIP config if present
+          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
+            # Extract headers and add to array (avoiding subshell issues)
+            while IFS= read -r header_line; do
+              if [ -n "$header_line" ]; then
+                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
+                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
+                if [ -n "$key" ] && [ -n "$value" ]; then
+                  CURL_HEADERS+=(-H "${key}: ${value}")
+                fi
+              fi
+            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
+          fi
+          
+          # Execute curl with headers and form data
           TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
+            "${CURL_HEADERS[@]}" \
             -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
             -d "subject_token=$GITHUB_OIDC_TOKEN" \
             -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
@@ -1000,7 +1091,6 @@ jobs:
           
           if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
             log_error "Token exchange failed with HTTP $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -1009,7 +1099,6 @@ jobs:
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -1019,7 +1108,6 @@ jobs:
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp organizations list'"
-            log_error "Command output: $ORG_JSON_OUTPUT"
             exit 1
           fi
           
@@ -1027,8 +1115,7 @@ jobs:
           HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
-            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
             exit 1
           fi
           
@@ -1039,7 +1126,6 @@ jobs:
           PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp projects list'"
-            log_error "Command output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
           
@@ -1047,8 +1133,7 @@ jobs:
           HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
-            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
             exit 1
           fi
           
@@ -1067,7 +1152,7 @@ jobs:
           RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
           
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
             exit 1
           fi
           
@@ -1165,13 +1250,21 @@ jobs:
           # Use GitHub Actions OIDC token with workload identity provider URL
           log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Get workload identity provider URL from credential file
-          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider configuration from credential file
+          # The workload.url is actually a JSON object with url, headers, format_type, etc.
+          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          
+          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
+            log_error "Failed to extract workload identity provider configuration from credential file"
+            exit 1
+          fi
+          
+          # Extract the actual URL and headers from the workload identity provider configuration
+          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
+          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
           
           if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract workload identity provider URL from credential file"
-            log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
-            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
+            log_error "Failed to extract URL from workload identity provider configuration"
             exit 1
           fi
           
@@ -1189,17 +1282,32 @@ jobs:
           
           if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
             log_error "Failed to obtain GitHub OIDC token"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
-            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
             exit 1
           fi
           
           # Exchange GitHub OIDC token for HCP access token using workload identity provider
           log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          log_info "Workload identity provider URL: $WIP_URL"
           
+          # Build curl command with headers from WIP config
+          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
+          
+          # Add optional headers from WIP config if present
+          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
+            # Extract headers and add to array (avoiding subshell issues)
+            while IFS= read -r header_line; do
+              if [ -n "$header_line" ]; then
+                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
+                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
+                if [ -n "$key" ] && [ -n "$value" ]; then
+                  CURL_HEADERS+=(-H "${key}: ${value}")
+                fi
+              fi
+            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
+          fi
+          
+          # Execute curl with headers and form data
           TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
+            "${CURL_HEADERS[@]}" \
             -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
             -d "subject_token=$GITHUB_OIDC_TOKEN" \
             -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
@@ -1210,7 +1318,6 @@ jobs:
           
           if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
             log_error "Token exchange failed with HTTP $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -1219,7 +1326,6 @@ jobs:
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
             log_error "Failed to extract access_token from token exchange response"
             log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response body: $RESPONSE_BODY"
             exit 1
           fi
           
@@ -1229,7 +1335,6 @@ jobs:
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp organizations list'"
-            log_error "Command output: $ORG_JSON_OUTPUT"
             exit 1
           fi
           
@@ -1237,8 +1342,7 @@ jobs:
           HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'."
-            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
+            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
             exit 1
           fi
           
@@ -1249,7 +1353,6 @@ jobs:
           PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp projects list'"
-            log_error "Command output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
           
@@ -1257,8 +1360,7 @@ jobs:
           HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
           
           if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'."
-            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
+            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
             exit 1
           fi
           
@@ -1277,7 +1379,7 @@ jobs:
           RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
           
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE: $RESPONSE_BODY"
+            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
             exit 1
           fi
           
