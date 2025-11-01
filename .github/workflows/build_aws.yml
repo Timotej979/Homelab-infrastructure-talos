@@ -79,15 +79,23 @@ jobs:
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
-          PACKER_OUTPUT=$(packer build \
+          # Stream output to logs while also capturing it to a variable
+          PACKER_LOG_FILE=$(mktemp)
+          packer build \
             -var "channel=aws-dev-arm64" \
             -var "aws_instance_type=t4g.medium" \
             -var "talos_version=latest" \
             -var "talos_architecture=arm64" \
             -var "talos_extensions=[]" \
-            ./aws.pkr.hcl 2>&1)
+            ./aws.pkr.hcl 2>&1 | tee "$PACKER_LOG_FILE"
+          PACKER_EXIT_CODE=${PIPESTATUS[0]}
+          PACKER_OUTPUT=$(cat "$PACKER_LOG_FILE")
+          rm -f "$PACKER_LOG_FILE"
           
-          echo "$PACKER_OUTPUT"
+          if [ $PACKER_EXIT_CODE -ne 0 ]; then
+            log_error "Packer build failed with exit code $PACKER_EXIT_CODE"
+            exit $PACKER_EXIT_CODE
+          fi
           
           # Extract iteration ID from Packer output (the version fingerprint)
           ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
@@ -110,20 +118,29 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            log_error "Failed to extract organization ID from 'hcp organizations list'."
+            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
+          
+          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
+          log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            log_error "Failed to extract project ID from 'hcp projects list'."
+            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
+          
+          log_info "Project ID: $HCP_PROJECT_ID"
           
           # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
           # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
@@ -241,20 +258,29 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            log_error "Failed to extract organization ID from 'hcp organizations list'."
+            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
+          
+          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
+          log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            log_error "Failed to extract project ID from 'hcp projects list'."
+            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
+          
+          log_info "Project ID: $HCP_PROJECT_ID"
           
           # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
           # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
@@ -374,20 +400,29 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            log_error "Failed to extract organization ID from 'hcp organizations list'."
+            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
+          
+          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
+          log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            log_error "Failed to extract project ID from 'hcp projects list'."
+            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
+          
+          log_info "Project ID: $HCP_PROJECT_ID"
           
           # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
           # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
@@ -507,20 +542,29 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            log_error "Failed to extract organization ID from 'hcp organizations list'."
+            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
+          
+          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
+          log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            log_error "Failed to extract project ID from 'hcp projects list'."
+            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
+          
+          log_info "Project ID: $HCP_PROJECT_ID"
           
           # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
           # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
@@ -638,20 +682,29 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            log_error "Failed to extract organization ID from 'hcp organizations list'."
+            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
+          
+          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
+          log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            log_error "Failed to extract project ID from 'hcp projects list'."
+            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
+          
+          log_info "Project ID: $HCP_PROJECT_ID"
           
           # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
           # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
@@ -769,20 +822,29 @@ jobs:
           fi
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
-          HCP_ORG_ID=$(hcp organizations list -o json 2>/dev/null | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          ORG_JSON_OUTPUT=$(hcp organizations list -o json 2>&1)
+          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].resource.id // .organizations[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_ORG_ID" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list'. Cannot promote to channel."
+            log_error "Failed to extract organization ID from 'hcp organizations list'."
+            log_error "Raw JSON output: $ORG_JSON_OUTPUT"
             exit 1
           fi
+          
+          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
+          log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          HCP_PROJECT_ID=$(hcp projects list -o json 2>/dev/null | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // empty' 2>/dev/null || echo "")
+          PROJECT_JSON_OUTPUT=$(hcp projects list -o json 2>&1)
+          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].resource.id // .projects[0].resource.id // .items[0].id // .items[0].resource.id // .[0].id // .[0].ID // empty' 2>/dev/null || echo "")
           
           if [ -z "$HCP_PROJECT_ID" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list'. Cannot promote to channel."
+            log_error "Failed to extract project ID from 'hcp projects list'."
+            log_error "Raw JSON output: $PROJECT_JSON_OUTPUT"
             exit 1
           fi
+          
+          log_info "Project ID: $HCP_PROJECT_ID"
           
           # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
           # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
