@@ -107,23 +107,34 @@ jobs:
           
           log_info "Promoting image to aws-dev-arm64 channel..."
           
-          # Get HCP access token - refresh authentication to get fresh token after long build
-          log_info "Refreshing HCP authentication to obtain access token..."
-          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
+          # Get HCP access token from service principal workload identity
+          # Extract JWT from credential file and exchange it for access token
+          log_info "Obtaining HCP access token from service principal..."
           
-          # Extract access token from credential file (should be fresh after re-login)
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Extract JWT from workload identity in credential file
+          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract HCP access token from credential file after refresh"
-            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
+            log_error "Failed to extract JWT from workload identity in credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
+            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Verify token is not empty or just whitespace
-          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
-            log_error "HCP access token is empty or whitespace only"
+          # Exchange JWT for access token via OAuth2 token endpoint
+          log_info "Exchanging service principal JWT for access token..."
+          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
+              \"assertion\": \"$WORKLOAD_JWT\"
+            }" 2>&1)
+          
+          HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
           
@@ -275,23 +286,34 @@ jobs:
           
           log_info "Promoting image to aws-dev-amd64 channel..."
           
-          # Get HCP access token - refresh authentication to get fresh token after long build
-          log_info "Refreshing HCP authentication to obtain access token..."
-          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
+          # Get HCP access token from service principal workload identity
+          # Extract JWT from credential file and exchange it for access token
+          log_info "Obtaining HCP access token from service principal..."
           
-          # Extract access token from credential file (should be fresh after re-login)
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Extract JWT from workload identity in credential file
+          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract HCP access token from credential file after refresh"
-            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
+            log_error "Failed to extract JWT from workload identity in credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
+            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Verify token is not empty or just whitespace
-          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
-            log_error "HCP access token is empty or whitespace only"
+          # Exchange JWT for access token via OAuth2 token endpoint
+          log_info "Exchanging service principal JWT for access token..."
+          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
+              \"assertion\": \"$WORKLOAD_JWT\"
+            }" 2>&1)
+          
+          HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
           
@@ -445,23 +467,34 @@ jobs:
           
           log_info "Promoting image to aws-stage-arm64 channel..."
           
-          # Get HCP access token - refresh authentication to get fresh token after long build
-          log_info "Refreshing HCP authentication to obtain access token..."
-          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
+          # Get HCP access token from service principal workload identity
+          # Extract JWT from credential file and exchange it for access token
+          log_info "Obtaining HCP access token from service principal..."
           
-          # Extract access token from credential file (should be fresh after re-login)
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Extract JWT from workload identity in credential file
+          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract HCP access token from credential file after refresh"
-            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
+            log_error "Failed to extract JWT from workload identity in credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
+            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Verify token is not empty or just whitespace
-          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
-            log_error "HCP access token is empty or whitespace only"
+          # Exchange JWT for access token via OAuth2 token endpoint
+          log_info "Exchanging service principal JWT for access token..."
+          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
+              \"assertion\": \"$WORKLOAD_JWT\"
+            }" 2>&1)
+          
+          HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
           
@@ -615,23 +648,34 @@ jobs:
           
           log_info "Promoting image to aws-stage-amd64 channel..."
           
-          # Get HCP access token - refresh authentication to get fresh token after long build
-          log_info "Refreshing HCP authentication to obtain access token..."
-          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
+          # Get HCP access token from service principal workload identity
+          # Extract JWT from credential file and exchange it for access token
+          log_info "Obtaining HCP access token from service principal..."
           
-          # Extract access token from credential file (should be fresh after re-login)
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Extract JWT from workload identity in credential file
+          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract HCP access token from credential file after refresh"
-            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
+            log_error "Failed to extract JWT from workload identity in credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
+            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Verify token is not empty or just whitespace
-          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
-            log_error "HCP access token is empty or whitespace only"
+          # Exchange JWT for access token via OAuth2 token endpoint
+          log_info "Exchanging service principal JWT for access token..."
+          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
+              \"assertion\": \"$WORKLOAD_JWT\"
+            }" 2>&1)
+          
+          HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
           
@@ -783,23 +827,34 @@ jobs:
           
           log_info "Promoting image to aws-prod-arm64 channel..."
           
-          # Get HCP access token - refresh authentication to get fresh token after long build
-          log_info "Refreshing HCP authentication to obtain access token..."
-          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
+          # Get HCP access token from service principal workload identity
+          # Extract JWT from credential file and exchange it for access token
+          log_info "Obtaining HCP access token from service principal..."
           
-          # Extract access token from credential file (should be fresh after re-login)
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Extract JWT from workload identity in credential file
+          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract HCP access token from credential file after refresh"
-            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
+            log_error "Failed to extract JWT from workload identity in credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
+            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Verify token is not empty or just whitespace
-          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
-            log_error "HCP access token is empty or whitespace only"
+          # Exchange JWT for access token via OAuth2 token endpoint
+          log_info "Exchanging service principal JWT for access token..."
+          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
+              \"assertion\": \"$WORKLOAD_JWT\"
+            }" 2>&1)
+          
+          HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
           
@@ -951,23 +1006,34 @@ jobs:
           
           log_info "Promoting image to aws-prod-amd64 channel..."
           
-          # Get HCP access token - refresh authentication to get fresh token after long build
-          log_info "Refreshing HCP authentication to obtain access token..."
-          hcp auth login --cred-file=$HCP_CRED_FILE >/dev/null 2>&1
+          # Get HCP access token from service principal workload identity
+          # Extract JWT from credential file and exchange it for access token
+          log_info "Obtaining HCP access token from service principal..."
           
-          # Extract access token from credential file (should be fresh after re-login)
-          HCP_ACCESS_TOKEN=$(jq -r '.access_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Extract JWT from workload identity in credential file
+          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract HCP access token from credential file after refresh"
-            log_error "Credential file exists: $([ -f "$HCP_CRED_FILE" ] && echo 'yes' || echo 'no')"
+          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
+            log_error "Failed to extract JWT from workload identity in credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
+            log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Verify token is not empty or just whitespace
-          if [ -z "$(echo "$HCP_ACCESS_TOKEN" | tr -d '[:space:]')" ]; then
-            log_error "HCP access token is empty or whitespace only"
+          # Exchange JWT for access token via OAuth2 token endpoint
+          log_info "Exchanging service principal JWT for access token..."
+          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
+              \"assertion\": \"$WORKLOAD_JWT\"
+            }" 2>&1)
+          
+          HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
+          
+          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
           
