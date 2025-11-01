@@ -2,7 +2,7 @@ name: Build AWS Image
 
 permissions:
   contents: 'read'
-  id-token: 'write'
+  id-token: 'write'  # Required for workload identity provider OIDC token
 
 on:
   workflow_call:
@@ -107,33 +107,52 @@ jobs:
           
           log_info "Promoting image to aws-dev-arm64 channel..."
           
-          # Get HCP access token from service principal workload identity
-          # Extract JWT from credential file and exchange it for access token
-          log_info "Obtaining HCP access token from service principal..."
+          # Get HCP access token using workload identity provider
+          # Use GitHub Actions OIDC token with workload identity provider URL
+          log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Extract JWT from workload identity in credential file
-          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider URL from credential file
+          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
-            log_error "Failed to extract JWT from workload identity in credential file"
+          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
+            log_error "Failed to extract workload identity provider URL from credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Exchange JWT for access token via OAuth2 token endpoint
-          log_info "Exchanging service principal JWT for access token..."
-          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
-              \"assertion\": \"$WORKLOAD_JWT\"
-            }" 2>&1)
+          # Get GitHub Actions OIDC token (must be requested - not automatically available)
+          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
+          log_info "Requesting GitHub OIDC token..."
+          # Append audience parameter (use ? if URL has no query params, & if it does)
+          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
+          else
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
+          fi
+          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
+          
+          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
+            log_error "Failed to obtain GitHub OIDC token"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
+            exit 1
+          fi
+          
+          # Exchange GitHub OIDC token for HCP access token using workload identity provider
+          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
+          TOKEN_RESPONSE=$(curl -s -X POST "$WIP_URL" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            -d "subject_token=$GITHUB_OIDC_TOKEN" \
+            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
+            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
           
           HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Failed to exchange GitHub OIDC token for HCP access token"
             log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
@@ -286,33 +305,52 @@ jobs:
           
           log_info "Promoting image to aws-dev-amd64 channel..."
           
-          # Get HCP access token from service principal workload identity
-          # Extract JWT from credential file and exchange it for access token
-          log_info "Obtaining HCP access token from service principal..."
+          # Get HCP access token using workload identity provider
+          # Use GitHub Actions OIDC token with workload identity provider URL
+          log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Extract JWT from workload identity in credential file
-          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider URL from credential file
+          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
-            log_error "Failed to extract JWT from workload identity in credential file"
+          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
+            log_error "Failed to extract workload identity provider URL from credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Exchange JWT for access token via OAuth2 token endpoint
-          log_info "Exchanging service principal JWT for access token..."
-          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
-              \"assertion\": \"$WORKLOAD_JWT\"
-            }" 2>&1)
+          # Get GitHub Actions OIDC token (must be requested - not automatically available)
+          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
+          log_info "Requesting GitHub OIDC token..."
+          # Append audience parameter (use ? if URL has no query params, & if it does)
+          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
+          else
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
+          fi
+          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
+          
+          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
+            log_error "Failed to obtain GitHub OIDC token"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
+            exit 1
+          fi
+          
+          # Exchange GitHub OIDC token for HCP access token using workload identity provider
+          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
+          TOKEN_RESPONSE=$(curl -s -X POST "$WIP_URL" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            -d "subject_token=$GITHUB_OIDC_TOKEN" \
+            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
+            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
           
           HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Failed to exchange GitHub OIDC token for HCP access token"
             log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
@@ -467,33 +505,52 @@ jobs:
           
           log_info "Promoting image to aws-stage-arm64 channel..."
           
-          # Get HCP access token from service principal workload identity
-          # Extract JWT from credential file and exchange it for access token
-          log_info "Obtaining HCP access token from service principal..."
+          # Get HCP access token using workload identity provider
+          # Use GitHub Actions OIDC token with workload identity provider URL
+          log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Extract JWT from workload identity in credential file
-          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider URL from credential file
+          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
-            log_error "Failed to extract JWT from workload identity in credential file"
+          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
+            log_error "Failed to extract workload identity provider URL from credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Exchange JWT for access token via OAuth2 token endpoint
-          log_info "Exchanging service principal JWT for access token..."
-          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
-              \"assertion\": \"$WORKLOAD_JWT\"
-            }" 2>&1)
+          # Get GitHub Actions OIDC token (must be requested - not automatically available)
+          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
+          log_info "Requesting GitHub OIDC token..."
+          # Append audience parameter (use ? if URL has no query params, & if it does)
+          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
+          else
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
+          fi
+          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
+          
+          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
+            log_error "Failed to obtain GitHub OIDC token"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
+            exit 1
+          fi
+          
+          # Exchange GitHub OIDC token for HCP access token using workload identity provider
+          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
+          TOKEN_RESPONSE=$(curl -s -X POST "$WIP_URL" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            -d "subject_token=$GITHUB_OIDC_TOKEN" \
+            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
+            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
           
           HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Failed to exchange GitHub OIDC token for HCP access token"
             log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
@@ -648,33 +705,52 @@ jobs:
           
           log_info "Promoting image to aws-stage-amd64 channel..."
           
-          # Get HCP access token from service principal workload identity
-          # Extract JWT from credential file and exchange it for access token
-          log_info "Obtaining HCP access token from service principal..."
+          # Get HCP access token using workload identity provider
+          # Use GitHub Actions OIDC token with workload identity provider URL
+          log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Extract JWT from workload identity in credential file
-          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider URL from credential file
+          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
-            log_error "Failed to extract JWT from workload identity in credential file"
+          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
+            log_error "Failed to extract workload identity provider URL from credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Exchange JWT for access token via OAuth2 token endpoint
-          log_info "Exchanging service principal JWT for access token..."
-          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
-              \"assertion\": \"$WORKLOAD_JWT\"
-            }" 2>&1)
+          # Get GitHub Actions OIDC token (must be requested - not automatically available)
+          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
+          log_info "Requesting GitHub OIDC token..."
+          # Append audience parameter (use ? if URL has no query params, & if it does)
+          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
+          else
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
+          fi
+          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
+          
+          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
+            log_error "Failed to obtain GitHub OIDC token"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
+            exit 1
+          fi
+          
+          # Exchange GitHub OIDC token for HCP access token using workload identity provider
+          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
+          TOKEN_RESPONSE=$(curl -s -X POST "$WIP_URL" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            -d "subject_token=$GITHUB_OIDC_TOKEN" \
+            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
+            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
           
           HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Failed to exchange GitHub OIDC token for HCP access token"
             log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
@@ -827,33 +903,52 @@ jobs:
           
           log_info "Promoting image to aws-prod-arm64 channel..."
           
-          # Get HCP access token from service principal workload identity
-          # Extract JWT from credential file and exchange it for access token
-          log_info "Obtaining HCP access token from service principal..."
+          # Get HCP access token using workload identity provider
+          # Use GitHub Actions OIDC token with workload identity provider URL
+          log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Extract JWT from workload identity in credential file
-          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider URL from credential file
+          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
-            log_error "Failed to extract JWT from workload identity in credential file"
+          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
+            log_error "Failed to extract workload identity provider URL from credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Exchange JWT for access token via OAuth2 token endpoint
-          log_info "Exchanging service principal JWT for access token..."
-          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
-              \"assertion\": \"$WORKLOAD_JWT\"
-            }" 2>&1)
+          # Get GitHub Actions OIDC token (must be requested - not automatically available)
+          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
+          log_info "Requesting GitHub OIDC token..."
+          # Append audience parameter (use ? if URL has no query params, & if it does)
+          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
+          else
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
+          fi
+          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
+          
+          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
+            log_error "Failed to obtain GitHub OIDC token"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
+            exit 1
+          fi
+          
+          # Exchange GitHub OIDC token for HCP access token using workload identity provider
+          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
+          TOKEN_RESPONSE=$(curl -s -X POST "$WIP_URL" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            -d "subject_token=$GITHUB_OIDC_TOKEN" \
+            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
+            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
           
           HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Failed to exchange GitHub OIDC token for HCP access token"
             log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
@@ -1006,33 +1101,52 @@ jobs:
           
           log_info "Promoting image to aws-prod-amd64 channel..."
           
-          # Get HCP access token from service principal workload identity
-          # Extract JWT from credential file and exchange it for access token
-          log_info "Obtaining HCP access token from service principal..."
+          # Get HCP access token using workload identity provider
+          # Use GitHub Actions OIDC token with workload identity provider URL
+          log_info "Obtaining HCP access token via workload identity provider..."
           
-          # Extract JWT from workload identity in credential file
-          WORKLOAD_JWT=$(jq -r '.workload.token // .workload.jwt // .workload.id_token // empty' "$HCP_CRED_FILE" 2>/dev/null)
+          # Get workload identity provider URL from credential file
+          WIP_URL=$(jq -r '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
-          if [ -z "$WORKLOAD_JWT" ] || [ "$WORKLOAD_JWT" = "null" ]; then
-            log_error "Failed to extract JWT from workload identity in credential file"
+          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
+            log_error "Failed to extract workload identity provider URL from credential file"
             log_error "Credential file keys: $(jq -r 'keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse JSON')"
             log_error "Workload structure: $(jq '.workload | keys | join(", ")' "$HCP_CRED_FILE" 2>/dev/null || echo 'Unable to parse')"
             exit 1
           fi
           
-          # Exchange JWT for access token via OAuth2 token endpoint
-          log_info "Exchanging service principal JWT for access token..."
-          TOKEN_RESPONSE=$(curl -s -X POST "https://auth.hashicorp.com/oauth/token" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"grant_type\": \"urn:ietf:params:oauth:grant-type:jwt-bearer\",
-              \"assertion\": \"$WORKLOAD_JWT\"
-            }" 2>&1)
+          # Get GitHub Actions OIDC token (must be requested - not automatically available)
+          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
+          log_info "Requesting GitHub OIDC token..."
+          # Append audience parameter (use ? if URL has no query params, & if it does)
+          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
+          else
+            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
+          fi
+          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
+          
+          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
+            log_error "Failed to obtain GitHub OIDC token"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo 'yes' || echo 'no')"
+            log_error "ACTIONS_ID_TOKEN_REQUEST_URL is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && echo 'yes' || echo 'no')"
+            exit 1
+          fi
+          
+          # Exchange GitHub OIDC token for HCP access token using workload identity provider
+          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
+          TOKEN_RESPONSE=$(curl -s -X POST "$WIP_URL" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            -d "subject_token=$GITHUB_OIDC_TOKEN" \
+            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
+            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
           
           HCP_ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
           
           if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to exchange service principal JWT for access token"
+            log_error "Failed to exchange GitHub OIDC token for HCP access token"
             log_error "Token exchange response: $TOKEN_RESPONSE"
             exit 1
           fi
