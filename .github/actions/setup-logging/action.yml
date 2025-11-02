@@ -1,0 +1,20 @@
+name: 'Setup Logging Script'
+description: 'Creates a reusable logging.sh script with color-coded log functions'
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate logging.sh script
+      shell: bash
+      run: |
+        echo 'Creating logging.sh script...'
+        echo '#!/bin/bash' > $GITHUB_WORKSPACE/logging.sh
+        echo 'GREEN="\033[38;5;82m"' >> $GITHUB_WORKSPACE/logging.sh
+        echo 'ORANGE="\033[38;5;208m"' >> $GITHUB_WORKSPACE/logging.sh
+        echo 'RED="\033[38;5;196m"' >> $GITHUB_WORKSPACE/logging.sh
+        echo 'RESET="\033[0m"' >> $GITHUB_WORKSPACE/logging.sh
+        echo 'log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\\n\\n" "$1"; }' >> $GITHUB_WORKSPACE/logging.sh
+        echo 'log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\\n" "$1"; }' >> $GITHUB_WORKSPACE/logging.sh
+        echo 'log_error() { printf "${RED}[ERROR] %s${RESET}\\n" "$1"; }' >> $GITHUB_WORKSPACE/logging.sh
+        echo 'log_info() { printf "[INFO] %s\\n" "$1"; }' >> $GITHUB_WORKSPACE/logging.sh
+        echo "Logging script created in workspace."
+

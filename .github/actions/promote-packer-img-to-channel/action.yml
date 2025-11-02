@@ -1,0 +1,107 @@
+name: 'Promote Packer Image to Channel'
+description: 'Promotes a Packer image iteration to an HCP Packer channel'
+inputs:
+  hcp_cred_file:
+    description: 'Path to HCP credential file'
+    required: true
+  hcp_cli_version:
+    description: 'HCP CLI version'
+    required: true
+  iteration_id:
+    description: 'Packer iteration ID to promote'
+    required: true
+  channel:
+    description: 'HCP Packer channel name to promote to'
+    required: true
+  bucket_name:
+    description: 'HCP Packer bucket name'
+    required: true
+    default: 'homelab-infrastructure-talos'
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Logging Script
+      uses: ./.github/actions/setup-logging
+
+    - name: Install HCP CLI
+      uses: hashicorp/hcp-setup-action@v0.1.0
+      with:
+        version: ${{ inputs.hcp_cli_version }}
+
+    - name: Promote Image to Channel
+      shell: bash
+      env:
+        HCP_CRED_FILE: ${{ inputs.hcp_cred_file }}
+        ITERATION_ID: ${{ inputs.iteration_id }}
+        CHANNEL: ${{ inputs.channel }}
+        BUCKET_NAME: ${{ inputs.bucket_name }}
+      run: |
+        source $GITHUB_WORKSPACE/logging.sh
+
+        log_info "Promoting image to $CHANNEL channel..."
+        WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
+        [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ] && { log_error "Failed to extract workload identity provider configuration"; exit 1; }
+        
+        WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
+        WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
+        [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ] || [ "$WIP_URL" = "" ] && { log_error "Failed to extract URL from workload identity provider configuration"; exit 1; }
+        [[ ! "$WIP_URL" =~ ^https?:// ]] && { log_error "Invalid workload identity provider URL format"; exit 1; }
+
+        log_info "Requesting GitHub OIDC token..."
+        if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
+          OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
+        else
+          OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
+        fi
+        GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
+        [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ] && { log_error "Failed to obtain GitHub OIDC token"; exit 1; }
+
+        log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
+        CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
+        [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ] && while IFS= read -r header_line; do
+          [ -n "$header_line" ] && key=$(echo "$header_line" | cut -d':' -f1 | xargs) && value=$(echo "$header_line" | cut -d':' -f2- | xargs) && [ -n "$key" ] && [ -n "$value" ] && CURL_HEADERS+=(-H "${key}: ${value}")
+        done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
+
+        TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" "${CURL_HEADERS[@]}" \
+          -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+          -d "subject_token=$GITHUB_OIDC_TOKEN" \
+          -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
+          -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
+        [ $? != 0 ] && { log_error "Token exchange request failed"; exit 1; }
+        
+        HTTP_CODE=$(echo "$TOKEN_RESPONSE" | tail -n 1)
+        RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
+        [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ] && { log_error "Token exchange failed with HTTP $HTTP_CODE"; exit 1; }
+
+        RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
+        HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
+        [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ] && { log_error "Failed to extract access_token from token exchange response. HTTP Code: $HTTP_CODE. Response contains keys: $RESPONSE_KEYS"; exit 1; }
+        log_info "Successfully obtained HCP access token"
+
+        log_info "Authenticating HCP CLI..."
+        hcp auth login --cred-file="$HCP_CRED_FILE" || { log_error "Failed to authenticate HCP CLI"; exit 1; }
+        log_success "HCP CLI authenticated successfully."
+
+        log_info "Fetching organization ID..."
+        ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1) || { log_error "Failed to run 'hcp organizations list'"; exit 1; }
+        HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+        [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ] && { log_error "Failed to extract organization ID"; exit 1; }
+        log_info "Organization ID: $HCP_ORG_ID"
+
+        log_info "Fetching project ID..."
+        PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1) || { log_error "Failed to run 'hcp projects list'"; exit 1; }
+        HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
+        [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ] && { log_error "Failed to extract project ID"; exit 1; }
+        log_info "Project ID: $HCP_PROJECT_ID"
+
+        log_info "Promoting iteration $ITERATION_ID to channel $CHANNEL..."
+        CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+          "https://api.cloud.hashicorp.com/packer/2021-04-30/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/${BUCKET_NAME}/channels/${CHANNEL}" \
+          --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
+          --header "Content-Type: application/json" \
+          --data "{\"iteration_id\": \"$ITERATION_ID\"}")
+        
+        HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
+        [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ] && { log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"; exit 1; }
+        log_success "Image promoted to $CHANNEL channel."
+

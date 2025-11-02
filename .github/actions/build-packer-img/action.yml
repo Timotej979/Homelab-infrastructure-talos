@@ -1,0 +1,88 @@
+name: 'Build Packer Image'
+description: 'Builds a Packer image with HCP authentication, initialization, build, and iteration ID extraction'
+inputs:
+  hcp_wip:
+    description: 'HCP Workload Identity Provider (secret)'
+    required: true
+  packer_version:
+    description: 'Packer version'
+    required: true
+  packer_template_path:
+    description: 'Path to Packer template'
+    required: true
+  packer_template_name:
+    description: 'Name of Packer template'
+    required: true
+  channel:
+    description: 'HCP Packer channel name'
+    required: true
+  instance_type:
+    description: 'AWS EC2 instance type'
+    required: true
+  talos_version:
+    description: 'Talos version to build'
+    required: true
+  talos_architecture:
+    description: 'Talos architecture (arm64 or amd64)'
+    required: true
+outputs:
+  iteration_id:
+    description: 'Packer iteration ID from the build'
+    value: ${{ steps.build-image.outputs.iteration_id }}
+  hcp_cred_file:
+    description: 'Path to HCP credential file'
+    value: ${{ steps.hcp-auth.outputs.credentials_file_path }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Logging Script
+      uses: ./.github/actions/setup-logging
+
+    - name: Configure HCP Credentials
+      id: hcp-auth
+      uses: hashicorp/hcp-auth-action@v0.1.0
+      with:
+        workload_identity_provider: ${{ inputs.hcp_wip }}
+        export_environment_variables: true
+
+    - name: Install Packer
+      uses: hashicorp/setup-packer@main
+      with:
+        version: ${{ inputs.packer_version }}
+
+    - name: Build Packer Image
+      id: build-image
+      env:
+        HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
+      shell: bash
+      working-directory: ${{ inputs.packer_template_path }}
+      run: |
+        source $GITHUB_WORKSPACE/logging.sh
+
+        log_info "Initializing Packer build..."
+        packer init ./${{ inputs.packer_template_name }}.pkr.hcl || { log_error "Failed to initialize Packer"; exit 1; }
+        log_success "Packer build initialized successfully."
+
+        log_info "Starting Packer build..."
+        PACKER_OUTPUT=$(packer build \
+          -var "channel=${{ inputs.channel }}" \
+          -var "aws_instance_type=${{ inputs.instance_type }}" \
+          -var "talos_version=${{ inputs.talos_version }}" \
+          -var "talos_architecture=${{ inputs.talos_architecture }}" \
+          -var "talos_extensions=[]" \
+          ./${{ inputs.packer_template_name }}.pkr.hcl 2>&1)
+        PACKER_EXIT_CODE=$?
+        
+        echo "$PACKER_OUTPUT"
+        
+        if [ $PACKER_EXIT_CODE -ne 0 ]; then
+          log_error "Packer build failed with exit code $PACKER_EXIT_CODE"
+          exit $PACKER_EXIT_CODE
+        fi
+        
+        ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
+        [ -z "$ITERATION_ID" ] && { log_error "Failed to extract iteration ID from Packer output"; exit 1; }
+        TEMPLATE_NAME_UPPER=$(echo "${{ inputs.packer_template_name }}" | tr '[:lower:]' '[:upper:]')
+        log_success "${TEMPLATE_NAME_UPPER} image built successfully. Iteration ID: $ITERATION_ID"
+        
+        echo "iteration_id=$ITERATION_ID" >> $GITHUB_OUTPUT
