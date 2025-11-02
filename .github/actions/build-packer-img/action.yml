@@ -2,22 +2,22 @@ name: 'Build Packer Image'
 description: 'Builds a Packer image with HCP authentication, initialization, build, and iteration ID extraction'
 inputs:
   hcp_wip:
-    description: 'HCP Workload Identity Provider (secret)'
+    description: 'HCP Workload Identity Provider to authenticate with HCP'
     required: true
   packer_version:
-    description: 'Packer version'
+    description: 'Packer version to install'
     required: true
   packer_template_path:
-    description: 'Path to Packer template'
+    description: 'Path to Packer template (relative to the root of the repository)'  
     required: true
   packer_template_name:
-    description: 'Name of Packer template'
+    description: 'Name of Packer template (without the .pkr.hcl extension)'
     required: true
   channel:
     description: 'HCP Packer channel name'
     required: true
   instance_type:
-    description: 'AWS EC2 instance type'
+    description: 'Instance type to build the image on'
     required: true
   talos_version:
     description: 'Talos version to build'

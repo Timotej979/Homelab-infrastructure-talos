@@ -57,17 +57,50 @@ runs:
         [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ] && { log_error "Failed to obtain GitHub OIDC token"; exit 1; }
 
         log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
+        
+        # Validate URL format
+        if [[ ! "$WIP_URL" =~ ^https:// ]]; then
+          log_error "WIP URL must use HTTPS protocol"
+          exit 1
+        fi
+        
+        # Extract domain for safe logging (no query params, no paths)
+        WIP_DOMAIN=$(echo "$WIP_URL" | sed -E 's|^https?://([^/]+).*|\1|')
+        log_info "WIP endpoint domain: $WIP_DOMAIN"
+        
+        # Count headers for debugging (safe)
+        HEADER_COUNT=1  # Content-Type
+        if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
+          CUSTOM_HEADER_COUNT=$(echo "$WIP_HEADERS" | jq -r 'to_entries | length' 2>/dev/null || echo "0")
+          HEADER_COUNT=$((HEADER_COUNT + CUSTOM_HEADER_COUNT))
+        fi
+        log_info "Total request headers: $HEADER_COUNT"
+        
         CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
         [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ] && while IFS= read -r header_line; do
           [ -n "$header_line" ] && key=$(echo "$header_line" | cut -d':' -f1 | xargs) && value=$(echo "$header_line" | cut -d':' -f2- | xargs) && [ -n "$key" ] && [ -n "$value" ] && CURL_HEADERS+=(-H "${key}: ${value}")
-        done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
+        done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null || echo "")
 
+        # Capture stderr separately for diagnostic info (curl error messages are usually non-sensitive)
+        CURL_STDERR=$(mktemp)
         TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" "${CURL_HEADERS[@]}" \
           -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
           -d "subject_token=$GITHUB_OIDC_TOKEN" \
           -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
-          -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
-        [ $? != 0 ] && { log_error "Token exchange request failed"; exit 1; }
+          -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>"$CURL_STDERR")
+        CURL_EXIT_CODE=$?
+        CURL_ERROR=$(cat "$CURL_STDERR" 2>/dev/null || echo "")
+        rm -f "$CURL_STDERR"
+        
+        if [ $CURL_EXIT_CODE != 0 ]; then
+          log_error "Token exchange request failed with curl exit code $CURL_EXIT_CODE"
+          if [ -n "$CURL_ERROR" ]; then
+            # Log curl error messages (usually safe - they're about DNS, SSL, etc., not tokens)
+            log_error "Curl error: $(echo "$CURL_ERROR" | head -c 200)"  # Limit length
+          fi
+          log_error "Failed to reach WIP endpoint at domain: $WIP_DOMAIN"
+          exit 1
+        fi
         
         HTTP_CODE=$(echo "$TOKEN_RESPONSE" | tail -n 1)
         RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
