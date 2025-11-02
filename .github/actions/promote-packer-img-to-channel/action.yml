@@ -81,24 +81,42 @@ runs:
           [ -n "$header_line" ] && key=$(echo "$header_line" | cut -d':' -f1 | xargs) && value=$(echo "$header_line" | cut -d':' -f2- | xargs) && [ -n "$key" ] && [ -n "$value" ] && CURL_HEADERS+=(-H "${key}: ${value}")
         done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null || echo "")
 
-        # Capture stderr separately for diagnostic info (curl error messages are usually non-sensitive)
+        # Capture stderr and stdout separately for diagnostic info
         CURL_STDERR=$(mktemp)
-        TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" "${CURL_HEADERS[@]}" \
+        CURL_STDOUT=$(mktemp)
+        
+        log_info "Making token exchange POST request..."
+        # Exit code 5 typically means "Couldn't resolve proxy" - disable proxy to avoid this
+        curl -w "\n%{http_code}" -X POST "$WIP_URL" "${CURL_HEADERS[@]}" \
           -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
           -d "subject_token=$GITHUB_OIDC_TOKEN" \
           -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
-          -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>"$CURL_STDERR")
+          -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" \
+          --max-time 30 \
+          --connect-timeout 10 \
+          --noproxy "*" \
+          -o "$CURL_STDOUT" 2>"$CURL_STDERR"
         CURL_EXIT_CODE=$?
+        TOKEN_RESPONSE=$(cat "$CURL_STDOUT" 2>/dev/null || echo "")
         CURL_ERROR=$(cat "$CURL_STDERR" 2>/dev/null || echo "")
-        rm -f "$CURL_STDERR"
+        rm -f "$CURL_STDERR" "$CURL_STDOUT"
         
         if [ $CURL_EXIT_CODE != 0 ]; then
           log_error "Token exchange request failed with curl exit code $CURL_EXIT_CODE"
           if [ -n "$CURL_ERROR" ]; then
             # Log curl error messages (usually safe - they're about DNS, SSL, etc., not tokens)
-            log_error "Curl error: $(echo "$CURL_ERROR" | head -c 200)"  # Limit length
+            SANITIZED_ERROR=$(echo "$CURL_ERROR" | head -c 500 | tr -d '\n\r' | sed 's/[^[:print:]]/ /g')
+            log_error "Curl error details: $SANITIZED_ERROR"
+          else
+            log_error "No curl error message captured (stderr was empty)"
+          fi
+          if [ -n "$TOKEN_RESPONSE" ]; then
+            HTTP_CODE_CHECK=$(echo "$TOKEN_RESPONSE" | tail -n 1)
+            log_error "Response HTTP code: $HTTP_CODE_CHECK"
           fi
           log_error "Failed to reach WIP endpoint at domain: $WIP_DOMAIN"
+          log_error "URL format validated: HTTPS protocol confirmed"
+          log_error "Headers configured: $HEADER_COUNT headers total"
           exit 1
         fi
         
