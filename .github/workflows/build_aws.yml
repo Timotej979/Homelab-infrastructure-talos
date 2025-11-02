@@ -2,7 +2,7 @@ name: Build AWS Image
 
 permissions:
   contents: 'read'
-  id-token: 'write'  # Required for workload identity provider OIDC token
+  id-token: 'write'
 
 on:
   workflow_call:
@@ -13,11 +13,45 @@ env:
   PACKER_VERSION: "1.14.2"
 
 jobs:
-  dev-arm64:
-    name: Build Development AWS Image for ARM64 architecture
-    environment: Development
+  build:
+    name: Build AWS Image - ${{ matrix.architecture }} - ${{ matrix.env }}
     runs-on: ubuntu-24.04
-    if: github.ref_name == 'dev'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env: dev
+            channel: aws-dev-arm64
+            instance_type: t4g.medium
+            architecture: arm64
+            ref: dev
+          - env: dev
+            channel: aws-dev-amd64
+            instance_type: t3a.medium
+            architecture: amd64
+            ref: dev
+          - env: stage
+            channel: aws-stage-arm64
+            instance_type: t4g.medium
+            architecture: arm64
+            ref: stage
+          - env: stage
+            channel: aws-stage-amd64
+            instance_type: t3a.medium
+            architecture: amd64
+            ref: stage
+          - env: prod
+            channel: aws-prod-arm64
+            instance_type: t4g.medium
+            architecture: arm64
+            ref: main
+          - env: prod
+            channel: aws-prod-amd64
+            instance_type: t3a.medium
+            architecture: amd64
+            ref: main
+            
+    environment: ${{ github.event.inputs.environment || matrix.env }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -40,18 +74,13 @@ jobs:
           version: ${{ env.PACKER_VERSION }}
 
       - name: Configure AWS Credentials
-        id: aws-configure-credentials
         uses: aws-actions/configure-aws-credentials@v5.1.0
         with:
           aws-region: ${{ secrets.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           output-env-credentials: true
 
-      - name: Check AWS Cloud environment access
-        run: |
-          aws sts get-caller-identity
-
-      - name: Build Development Image
+      - name: Build and Promote Image
         env:
           HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
         working-directory: ./packer/aws/templates
@@ -66,8 +95,14 @@ jobs:
           log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
           log_info() { printf "[INFO] %s\n" "$1"; }
 
+          # Check branch matches matrix ref
+          if [ "${{ github.ref_name }}" != "${{ matrix.ref }}" ]; then
+            log_error "Branch mismatch: expected ${{ matrix.ref }}, got ${{ github.ref_name }}"
+            exit 1
+          fi
+
           log_info "Logging in to HCP..."
-          hcp auth login --cred-file=$HCP_CRED_FILE
+          hcp auth login --cred-file=$HCP_CRED_FILE || { log_error "Failed to login to HCP"; exit 1; }
           log_success "Logged in to HCP successfully."
 
           log_info "Export HCP_CRED_FILE env var for packer to use..."
@@ -75,15 +110,15 @@ jobs:
           log_success "HCP_CRED_FILE env var exported successfully."
 
           log_info "Initializing Packer build..."
-          packer init ./aws.pkr.hcl
+          packer init ./aws.pkr.hcl || { log_error "Failed to initialize Packer"; exit 1; }
           log_success "Packer build initialized successfully."
 
           log_info "Starting Packer build..."
           PACKER_OUTPUT=$(packer build \
-            -var "channel=aws-dev-arm64" \
-            -var "aws_instance_type=t4g.medium" \
+            -var "channel=${{ matrix.channel }}" \
+            -var "aws_instance_type=${{ matrix.instance_type }}" \
             -var "talos_version=latest" \
-            -var "talos_architecture=arm64" \
+            -var "talos_architecture=${{ matrix.architecture }}" \
             -var "talos_extensions=[]" \
             ./aws.pkr.hcl 2>&1)
           PACKER_EXIT_CODE=$?
@@ -105,14 +140,12 @@ jobs:
           
           log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
           
-          log_info "Promoting image to aws-dev-arm64 channel..."
+          log_info "Promoting image to ${{ matrix.channel }} channel..."
           
           # Get HCP access token using workload identity provider
-          # Use GitHub Actions OIDC token with workload identity provider URL
           log_info "Obtaining HCP access token via workload identity provider..."
           
           # Get workload identity provider configuration from credential file
-          # The workload.url is actually a JSON object with url, headers, format_type, etc.
           WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
           
           if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
@@ -124,15 +157,19 @@ jobs:
           WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
           WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
           
-          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
+          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ] || [ "$WIP_URL" = "" ]; then
             log_error "Failed to extract URL from workload identity provider configuration"
             exit 1
           fi
           
+          # Validate URL format (basic check)
+          if [[ ! "$WIP_URL" =~ ^https?:// ]]; then
+            log_error "Invalid workload identity provider URL format"
+            exit 1
+          fi
+          
           # Get GitHub Actions OIDC token (must be requested - not automatically available)
-          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
           log_info "Requesting GitHub OIDC token..."
-          # Append audience parameter (use ? if URL has no query params, & if it does)
           if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
             OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
           else
@@ -154,7 +191,6 @@ jobs:
           
           # Add optional headers from WIP config if present
           if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
-            # Extract headers and add to array (avoiding subshell issues)
             while IFS= read -r header_line; do
               if [ -n "$header_line" ]; then
                 key=$(echo "$header_line" | cut -d':' -f1 | xargs)
@@ -173,6 +209,13 @@ jobs:
             -d "subject_token=$GITHUB_OIDC_TOKEN" \
             -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
             -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
+          
+          CURL_EXIT_CODE=$?
+          
+          if [ "$CURL_EXIT_CODE" != "0" ]; then
+            log_error "Token exchange request failed with curl exit code $CURL_EXIT_CODE"
+            exit 1
+          fi
           
           HTTP_CODE=$(echo "$TOKEN_RESPONSE" | tail -n 1)
           RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
@@ -198,6 +241,7 @@ jobs:
           log_info "Successfully obtained HCP access token"
           
           # Get organization ID using HCP CLI (service principals can list their orgs)
+          log_info "Fetching organization ID..."
           ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp organizations list'"
@@ -216,6 +260,7 @@ jobs:
           log_info "Organization ID: $HCP_ORG_ID"
           
           # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
+          log_info "Fetching project ID..."
           PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
           if [ $? -ne 0 ]; then
             log_error "Failed to run 'hcp projects list'"
@@ -233,10 +278,10 @@ jobs:
           log_info "Project ID: $HCP_PROJECT_ID"
           
           # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
-          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
+          log_info "Promoting iteration $ITERATION_ID to channel ${{ matrix.channel }}..."
           HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
           CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
-            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-dev-arm64" \
+            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/${{ matrix.channel }}" \
             --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
             --header "Content-Type: application/json" \
             --data "{\"iteration_id\": \"$ITERATION_ID\"}")
@@ -249,1168 +294,4 @@ jobs:
             exit 1
           fi
           
-          log_success "Image promoted to aws-dev-arm64 channel."
-
-  dev-amd64:
-    name: Build Development AWS Image for AMD64 architecture
-    environment: Development
-    runs-on: ubuntu-24.04
-    if: github.ref_name == 'dev'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Configure HCP Credentials
-        id: hcp-auth
-        uses: hashicorp/hcp-auth-action@v0.1.0
-        with:
-          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
-          export_environment_variables: true
-
-      - name: Install HCP CLI
-        uses: hashicorp/hcp-setup-action@v0.1.0
-        with:
-          version: ${{ env.HCP_CLI_VERSION }}
-
-      - name: Install Packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: ${{ env.PACKER_VERSION }}
-
-      - name: Configure AWS Credentials
-        id: aws-configure-credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.0
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          output-env-credentials: true
-
-      - name: Check AWS Cloud environment access
-        run: |
-          aws sts get-caller-identity
-
-      - name: Build Development Image
-        env:
-          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
-        working-directory: ./packer/aws/templates
-        run: |
-          GREEN='\033[38;5;82m'
-          ORANGE='\033[38;5;208m'
-          RED='\033[38;5;196m'
-          RESET='\033[0m'
-
-          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
-          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
-          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
-          log_info() { printf "[INFO] %s\n" "$1"; }
-
-          log_info "Logging in to HCP..."
-          hcp auth login --cred-file=$HCP_CRED_FILE
-          log_success "Logged in to HCP successfully."
-
-          log_info "Export HCP_CRED_FILE env var for packer to use..."
-          export HCP_CRED_FILE=$HCP_CRED_FILE
-          log_success "HCP_CRED_FILE env var exported successfully."
-
-          log_info "Initializing Packer build..."
-          packer init ./aws.pkr.hcl
-          log_success "Packer build initialized successfully."
-
-          log_info "Starting Packer build..."
-          PACKER_OUTPUT=$(packer build \
-            -var "channel=aws-dev-amd64" \
-            -var "aws_instance_type=t3a.medium" \
-            -var "talos_version=latest" \
-            -var "talos_architecture=amd64" \
-            -var "talos_extensions=[]" \
-            ./aws.pkr.hcl 2>&1)
-          
-          echo "$PACKER_OUTPUT"
-          
-          # Extract iteration ID from Packer output (the version fingerprint)
-          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
-          
-          if [ -z "$ITERATION_ID" ]; then
-            log_error "Failed to extract iteration ID from Packer output"
-            exit 1
-          fi
-          
-          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
-          
-          log_info "Promoting image to aws-dev-amd64 channel..."
-          
-          # Get HCP access token using workload identity provider
-          # Use GitHub Actions OIDC token with workload identity provider URL
-          log_info "Obtaining HCP access token via workload identity provider..."
-          
-          # Get workload identity provider configuration from credential file
-          # The workload.url is actually a JSON object with url, headers, format_type, etc.
-          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
-          
-          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
-            log_error "Failed to extract workload identity provider configuration from credential file"
-            exit 1
-          fi
-          
-          # Extract the actual URL and headers from the workload identity provider configuration
-          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
-          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
-          
-          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract URL from workload identity provider configuration"
-            exit 1
-          fi
-          
-          # Get GitHub Actions OIDC token (must be requested - not automatically available)
-          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
-          log_info "Requesting GitHub OIDC token..."
-          # Append audience parameter (use ? if URL has no query params, & if it does)
-          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
-          else
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
-          fi
-          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
-          
-          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
-            log_error "Failed to obtain GitHub OIDC token"
-            exit 1
-          fi
-          
-          # Exchange GitHub OIDC token for HCP access token using workload identity provider
-          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          
-          # Build curl command with headers from WIP config
-          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
-          
-          # Add optional headers from WIP config if present
-          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
-            # Extract headers and add to array (avoiding subshell issues)
-            while IFS= read -r header_line; do
-              if [ -n "$header_line" ]; then
-                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
-                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
-                if [ -n "$key" ] && [ -n "$value" ]; then
-                  CURL_HEADERS+=(-H "${key}: ${value}")
-                fi
-              fi
-            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
-          fi
-          
-          # Execute curl with headers and form data
-          TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            "${CURL_HEADERS[@]}" \
-            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
-            -d "subject_token=$GITHUB_OIDC_TOKEN" \
-            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
-            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
-          
-          HTTP_CODE=$(echo "$TOKEN_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
-          
-          if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            log_error "Token exchange failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          # Check response structure (safe - only logs keys, not values)
-          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
-          
-          # Try to extract access token - check multiple possible field names
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract access_token from token exchange response"
-            log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response contains keys: $RESPONSE_KEYS"
-            exit 1
-          fi
-          
-          log_info "Successfully obtained HCP access token"
-          
-          # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp organizations list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
-            exit 1
-          fi
-          
-          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
-          log_info "Organization ID: $HCP_ORG_ID"
-          
-          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp projects list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
-            exit 1
-          fi
-          
-          log_info "Project ID: $HCP_PROJECT_ID"
-          
-          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
-          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
-          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
-          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
-            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-dev-amd64" \
-            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
-            --header "Content-Type: application/json" \
-            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
-          
-          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
-          
-          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          log_success "Image promoted to aws-dev-amd64 channel."
-
-  stage-arm64:
-    name: Build Staging AWS Image for ARM64 architecture
-    environment: Staging
-    runs-on: ubuntu-24.04
-    if: github.ref_name == 'stage'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Configure HCP Credentials
-        id: hcp-auth
-        uses: hashicorp/hcp-auth-action@v0.1.0
-        with:
-          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
-          export_environment_variables: true
-
-      - name: Install HCP CLI
-        uses: hashicorp/hcp-setup-action@v0.1.0
-        with:
-          version: ${{ env.HCP_CLI_VERSION }}
-
-      - name: Install Packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: ${{ env.PACKER_VERSION }}
-
-      - name: Configure AWS Credentials
-        id: aws-configure-credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.0
-        env:
-          ACTIONS_STEP_DEBUG: true
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          output-env-credentials: true
-
-      - name: Check AWS Cloud environment access
-        run: |
-          aws sts get-caller-identity
-
-      - name: Build Staging Image
-        env:
-          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
-        working-directory: ./packer/aws/templates
-        run: |
-          GREEN='\033[38;5;82m'
-          ORANGE='\033[38;5;208m'
-          RED='\033[38;5;196m'
-          RESET='\033[0m'
-
-          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
-          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
-          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
-          log_info() { printf "[INFO] %s\n" "$1"; }
-
-          log_info "Logging in to HCP..."
-          hcp auth login --cred-file=$HCP_CRED_FILE
-          log_success "Logged in to HCP successfully."
-
-          log_info "Export HCP_CRED_FILE env var for packer to use..."
-          export HCP_CRED_FILE=$HCP_CRED_FILE
-          log_success "HCP_CRED_FILE env var exported successfully."
-
-          log_info "Initializing Packer build..."
-          packer init ./aws.pkr.hcl
-          log_success "Packer build initialized successfully."
-
-          log_info "Starting Packer build..."
-          PACKER_OUTPUT=$(packer build \
-            -var "channel=aws-stage-arm64" \
-            -var "aws_instance_type=t4g.medium" \
-            -var "talos_version=latest" \
-            -var "talos_architecture=arm64" \
-            -var "talos_extensions=[]" \
-            ./aws.pkr.hcl 2>&1)
-          
-          echo "$PACKER_OUTPUT"
-          
-          # Extract iteration ID from Packer output (the version fingerprint)
-          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
-          
-          if [ -z "$ITERATION_ID" ]; then
-            log_error "Failed to extract iteration ID from Packer output"
-            exit 1
-          fi
-          
-          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
-          
-          log_info "Promoting image to aws-stage-arm64 channel..."
-          
-          # Get HCP access token using workload identity provider
-          # Use GitHub Actions OIDC token with workload identity provider URL
-          log_info "Obtaining HCP access token via workload identity provider..."
-          
-          # Get workload identity provider configuration from credential file
-          # The workload.url is actually a JSON object with url, headers, format_type, etc.
-          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
-          
-          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
-            log_error "Failed to extract workload identity provider configuration from credential file"
-            exit 1
-          fi
-          
-          # Extract the actual URL and headers from the workload identity provider configuration
-          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
-          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
-          
-          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract URL from workload identity provider configuration"
-            exit 1
-          fi
-          
-          # Get GitHub Actions OIDC token (must be requested - not automatically available)
-          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
-          log_info "Requesting GitHub OIDC token..."
-          # Append audience parameter (use ? if URL has no query params, & if it does)
-          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
-          else
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
-          fi
-          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
-          
-          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
-            log_error "Failed to obtain GitHub OIDC token"
-            exit 1
-          fi
-          
-          # Exchange GitHub OIDC token for HCP access token using workload identity provider
-          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          
-          # Build curl command with headers from WIP config
-          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
-          
-          # Add optional headers from WIP config if present
-          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
-            # Extract headers and add to array (avoiding subshell issues)
-            while IFS= read -r header_line; do
-              if [ -n "$header_line" ]; then
-                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
-                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
-                if [ -n "$key" ] && [ -n "$value" ]; then
-                  CURL_HEADERS+=(-H "${key}: ${value}")
-                fi
-              fi
-            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
-          fi
-          
-          # Execute curl with headers and form data
-          TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            "${CURL_HEADERS[@]}" \
-            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
-            -d "subject_token=$GITHUB_OIDC_TOKEN" \
-            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
-            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
-          
-          HTTP_CODE=$(echo "$TOKEN_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
-          
-          if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            log_error "Token exchange failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          # Check response structure (safe - only logs keys, not values)
-          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
-          
-          # Try to extract access token - check multiple possible field names
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract access_token from token exchange response"
-            log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response contains keys: $RESPONSE_KEYS"
-            exit 1
-          fi
-          
-          log_info "Successfully obtained HCP access token"
-          
-          # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp organizations list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
-            exit 1
-          fi
-          
-          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
-          log_info "Organization ID: $HCP_ORG_ID"
-          
-          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp projects list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
-            exit 1
-          fi
-          
-          log_info "Project ID: $HCP_PROJECT_ID"
-          
-          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
-          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
-          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
-          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
-            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-stage-arm64" \
-            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
-            --header "Content-Type: application/json" \
-            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
-          
-          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
-          
-          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          log_success "Image promoted to aws-stage-arm64 channel."
-
-  stage-amd64:
-    name: Build Staging AWS Image for AMD64 architecture
-    environment: Staging
-    runs-on: ubuntu-24.04
-    if: github.ref_name == 'stage'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Configure HCP Credentials
-        id: hcp-auth
-        uses: hashicorp/hcp-auth-action@v0.1.0
-        with:
-          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
-          export_environment_variables: true
-
-      - name: Install HCP CLI
-        uses: hashicorp/hcp-setup-action@v0.1.0
-        with:
-          version: ${{ env.HCP_CLI_VERSION }}
-
-      - name: Install Packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: ${{ env.PACKER_VERSION }}
-
-      - name: Configure AWS Credentials
-        id: aws-configure-credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.0
-        env:
-          ACTIONS_STEP_DEBUG: true
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          output-env-credentials: true
-
-      - name: Check AWS Cloud environment access
-        run: |
-          aws sts get-caller-identity
-
-      - name: Build Staging Image
-        env:
-          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
-        working-directory: ./packer/aws/templates
-        run: |
-          GREEN='\033[38;5;82m'
-          ORANGE='\033[38;5;208m'
-          RED='\033[38;5;196m'
-          RESET='\033[0m'
-
-          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
-          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
-          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
-          log_info() { printf "[INFO] %s\n" "$1"; }
-
-          log_info "Logging in to HCP..."
-          hcp auth login --cred-file=$HCP_CRED_FILE
-          log_success "Logged in to HCP successfully."
-
-          log_info "Export HCP_CRED_FILE env var for packer to use..."
-          export HCP_CRED_FILE=$HCP_CRED_FILE
-          log_success "HCP_CRED_FILE env var exported successfully."
-
-          log_info "Initializing Packer build..."
-          packer init ./aws.pkr.hcl
-          log_success "Packer build initialized successfully."
-
-          log_info "Starting Packer build..."
-          PACKER_OUTPUT=$(packer build \
-            -var "channel=aws-stage-amd64" \
-            -var "aws_instance_type=t3a.medium" \
-            -var "talos_version=latest" \
-            -var "talos_architecture=amd64" \
-            -var "talos_extensions=[]" \
-            ./aws.pkr.hcl 2>&1)
-          
-          echo "$PACKER_OUTPUT"
-          
-          # Extract iteration ID from Packer output (the version fingerprint)
-          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
-          
-          if [ -z "$ITERATION_ID" ]; then
-            log_error "Failed to extract iteration ID from Packer output"
-            exit 1
-          fi
-          
-          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
-          
-          log_info "Promoting image to aws-stage-amd64 channel..."
-          
-          # Get HCP access token using workload identity provider
-          # Use GitHub Actions OIDC token with workload identity provider URL
-          log_info "Obtaining HCP access token via workload identity provider..."
-          
-          # Get workload identity provider configuration from credential file
-          # The workload.url is actually a JSON object with url, headers, format_type, etc.
-          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
-          
-          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
-            log_error "Failed to extract workload identity provider configuration from credential file"
-            exit 1
-          fi
-          
-          # Extract the actual URL and headers from the workload identity provider configuration
-          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
-          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
-          
-          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract URL from workload identity provider configuration"
-            exit 1
-          fi
-          
-          # Get GitHub Actions OIDC token (must be requested - not automatically available)
-          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
-          log_info "Requesting GitHub OIDC token..."
-          # Append audience parameter (use ? if URL has no query params, & if it does)
-          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
-          else
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
-          fi
-          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
-          
-          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
-            log_error "Failed to obtain GitHub OIDC token"
-            exit 1
-          fi
-          
-          # Exchange GitHub OIDC token for HCP access token using workload identity provider
-          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          
-          # Build curl command with headers from WIP config
-          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
-          
-          # Add optional headers from WIP config if present
-          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
-            # Extract headers and add to array (avoiding subshell issues)
-            while IFS= read -r header_line; do
-              if [ -n "$header_line" ]; then
-                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
-                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
-                if [ -n "$key" ] && [ -n "$value" ]; then
-                  CURL_HEADERS+=(-H "${key}: ${value}")
-                fi
-              fi
-            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
-          fi
-          
-          # Execute curl with headers and form data
-          TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            "${CURL_HEADERS[@]}" \
-            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
-            -d "subject_token=$GITHUB_OIDC_TOKEN" \
-            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
-            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
-          
-          HTTP_CODE=$(echo "$TOKEN_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
-          
-          if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            log_error "Token exchange failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          # Check response structure (safe - only logs keys, not values)
-          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
-          
-          # Try to extract access token - check multiple possible field names
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract access_token from token exchange response"
-            log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response contains keys: $RESPONSE_KEYS"
-            exit 1
-          fi
-          
-          log_info "Successfully obtained HCP access token"
-          
-          # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp organizations list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
-            exit 1
-          fi
-          
-          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
-          log_info "Organization ID: $HCP_ORG_ID"
-          
-          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp projects list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
-            exit 1
-          fi
-          
-          log_info "Project ID: $HCP_PROJECT_ID"
-          
-          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
-          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
-          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
-          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
-            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-stage-amd64" \
-            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
-            --header "Content-Type: application/json" \
-            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
-          
-          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
-          
-          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          log_success "Image promoted to aws-stage-amd64 channel."
-
-  prod-arm64:
-    name: Build Production AWS Image for ARM64 architecture
-    environment: Production
-    runs-on: ubuntu-24.04
-    if: github.ref_name == 'main'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Configure HCP Credentials
-        id: hcp-auth
-        uses: hashicorp/hcp-auth-action@v0.1.0
-        with:
-          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
-          export_environment_variables: true
-
-      - name: Install HCP CLI
-        uses: hashicorp/hcp-setup-action@v0.1.0
-        with:
-          version: ${{ env.HCP_CLI_VERSION }}
-
-      - name: Install Packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: ${{ env.PACKER_VERSION }}
-
-      - name: Configure AWS Credentials
-        id: aws-configure-credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.0
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          output-env-credentials: true
-
-      - name: Check AWS Cloud environment access
-        run: |
-          aws sts get-caller-identity
-
-      - name: Build Production Image
-        env:
-          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
-        working-directory: ./packer/aws/templates
-        run: |
-          GREEN='\033[38;5;82m'
-          ORANGE='\033[38;5;208m'
-          RED='\033[38;5;196m'
-          RESET='\033[0m'
-
-          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
-          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
-          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
-          log_info() { printf "[INFO] %s\n" "$1"; }
-
-          log_info "Logging in to HCP..."
-          hcp auth login --cred-file=$HCP_CRED_FILE
-          log_success "Logged in to HCP successfully."
-
-          log_info "Export HCP_CRED_FILE env var for packer to use..."
-          export HCP_CRED_FILE=$HCP_CRED_FILE
-          log_success "HCP_CRED_FILE env var exported successfully."
-
-          log_info "Initializing Packer build..."
-          packer init ./aws.pkr.hcl
-          log_success "Packer build initialized successfully."
-
-          log_info "Starting Packer build..."
-          PACKER_OUTPUT=$(packer build \
-            -var "channel=aws-prod-arm64" \
-            -var "aws_instance_type=t4g.medium" \
-            -var "talos_version=latest" \
-            -var "talos_architecture=arm64" \
-            -var "talos_extensions=[]" \
-            ./aws.pkr.hcl 2>&1)
-          
-          echo "$PACKER_OUTPUT"
-          
-          # Extract iteration ID from Packer output (the version fingerprint)
-          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
-          
-          if [ -z "$ITERATION_ID" ]; then
-            log_error "Failed to extract iteration ID from Packer output"
-            exit 1
-          fi
-          
-          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
-          
-          log_info "Promoting image to aws-prod-arm64 channel..."
-          
-          # Get HCP access token using workload identity provider
-          # Use GitHub Actions OIDC token with workload identity provider URL
-          log_info "Obtaining HCP access token via workload identity provider..."
-          
-          # Get workload identity provider configuration from credential file
-          # The workload.url is actually a JSON object with url, headers, format_type, etc.
-          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
-          
-          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
-            log_error "Failed to extract workload identity provider configuration from credential file"
-            exit 1
-          fi
-          
-          # Extract the actual URL and headers from the workload identity provider configuration
-          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
-          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
-          
-          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract URL from workload identity provider configuration"
-            exit 1
-          fi
-          
-          # Get GitHub Actions OIDC token (must be requested - not automatically available)
-          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
-          log_info "Requesting GitHub OIDC token..."
-          # Append audience parameter (use ? if URL has no query params, & if it does)
-          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
-          else
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
-          fi
-          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
-          
-          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
-            log_error "Failed to obtain GitHub OIDC token"
-            exit 1
-          fi
-          
-          # Exchange GitHub OIDC token for HCP access token using workload identity provider
-          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          
-          # Build curl command with headers from WIP config
-          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
-          
-          # Add optional headers from WIP config if present
-          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
-            # Extract headers and add to array (avoiding subshell issues)
-            while IFS= read -r header_line; do
-              if [ -n "$header_line" ]; then
-                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
-                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
-                if [ -n "$key" ] && [ -n "$value" ]; then
-                  CURL_HEADERS+=(-H "${key}: ${value}")
-                fi
-              fi
-            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
-          fi
-          
-          # Execute curl with headers and form data
-          TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            "${CURL_HEADERS[@]}" \
-            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
-            -d "subject_token=$GITHUB_OIDC_TOKEN" \
-            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
-            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
-          
-          HTTP_CODE=$(echo "$TOKEN_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
-          
-          if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            log_error "Token exchange failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          # Check response structure (safe - only logs keys, not values)
-          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
-          
-          # Try to extract access token - check multiple possible field names
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract access_token from token exchange response"
-            log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response contains keys: $RESPONSE_KEYS"
-            exit 1
-          fi
-          
-          log_info "Successfully obtained HCP access token"
-          
-          # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp organizations list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
-            exit 1
-          fi
-          
-          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
-          log_info "Organization ID: $HCP_ORG_ID"
-          
-          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp projects list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
-            exit 1
-          fi
-          
-          log_info "Project ID: $HCP_PROJECT_ID"
-          
-          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
-          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
-          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
-          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
-            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-prod-arm64" \
-            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
-            --header "Content-Type: application/json" \
-            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
-          
-          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
-          
-          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          log_success "Image promoted to aws-prod-arm64 channel."
-
-  prod-amd64:
-    name: Build Production AWS Image for AMD64 architecture
-    environment: Production
-    runs-on: ubuntu-24.04
-    if: github.ref_name == 'main'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Configure HCP Credentials
-        id: hcp-auth
-        uses: hashicorp/hcp-auth-action@v0.1.0
-        with:
-          workload_identity_provider: ${{ secrets.HCP_WIP_AWS_AZURE_GCP }}
-          export_environment_variables: true
-
-      - name: Install HCP CLI
-        uses: hashicorp/hcp-setup-action@v0.1.0
-        with:
-          version: ${{ env.HCP_CLI_VERSION }}
-
-      - name: Install Packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: ${{ env.PACKER_VERSION }}
-
-      - name: Configure AWS Credentials
-        id: aws-configure-credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.0
-        with:
-          aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          output-env-credentials: true
-
-      - name: Check AWS Cloud environment access
-        run: |
-          aws sts get-caller-identity
-
-      - name: Build Production Image
-        env:
-          HCP_CRED_FILE: ${{ steps.hcp-auth.outputs.credentials_file_path }}
-        working-directory: ./packer/aws/templates
-        run: |
-          GREEN='\033[38;5;82m'
-          ORANGE='\033[38;5;208m'
-          RED='\033[38;5;196m'
-          RESET='\033[0m'
-
-          log_success() { printf "${GREEN}[SUCCESS] %s${RESET}\n\n" "$1"; }
-          log_warning() { printf "${ORANGE}[WARNING] %s${RESET}\n" "$1"; }
-          log_error() { printf "${RED}[ERROR] %s${RESET}\n" "$1"; }
-          log_info() { printf "[INFO] %s\n" "$1"; }
-
-          log_info "Logging in to HCP..."
-          hcp auth login --cred-file=$HCP_CRED_FILE
-          log_success "Logged in to HCP successfully."
-
-          log_info "Export HCP_CRED_FILE env var for packer to use..."
-          export HCP_CRED_FILE=$HCP_CRED_FILE
-          log_success "HCP_CRED_FILE env var exported successfully."
-
-          log_info "Initializing Packer build..."
-          packer init ./aws.pkr.hcl
-          log_success "Packer build initialized successfully."
-
-          log_info "Starting Packer build..."
-          PACKER_OUTPUT=$(packer build \
-            -var "channel=aws-prod-amd64" \
-            -var "aws_instance_type=t3a.medium" \
-            -var "talos_version=latest" \
-            -var "talos_architecture=amd64" \
-            -var "talos_extensions=[]" \
-            ./aws.pkr.hcl 2>&1)
-          
-          echo "$PACKER_OUTPUT"
-          
-          # Extract iteration ID from Packer output (the version fingerprint)
-          ITERATION_ID=$(echo "$PACKER_OUTPUT" | grep -o 'versions/[^[:space:]]*' | sed 's|versions/||' | head -1)
-          
-          if [ -z "$ITERATION_ID" ]; then
-            log_error "Failed to extract iteration ID from Packer output"
-            exit 1
-          fi
-          
-          log_success "AWS image built successfully. Iteration ID: $ITERATION_ID"
-          
-          log_info "Promoting image to aws-prod-amd64 channel..."
-          
-          # Get HCP access token using workload identity provider
-          # Use GitHub Actions OIDC token with workload identity provider URL
-          log_info "Obtaining HCP access token via workload identity provider..."
-          
-          # Get workload identity provider configuration from credential file
-          # The workload.url is actually a JSON object with url, headers, format_type, etc.
-          WIP_CONFIG=$(jq -c '.workload.url // empty' "$HCP_CRED_FILE" 2>/dev/null)
-          
-          if [ -z "$WIP_CONFIG" ] || [ "$WIP_CONFIG" = "null" ]; then
-            log_error "Failed to extract workload identity provider configuration from credential file"
-            exit 1
-          fi
-          
-          # Extract the actual URL and headers from the workload identity provider configuration
-          WIP_URL=$(echo "$WIP_CONFIG" | jq -r '.url // empty' 2>/dev/null)
-          WIP_HEADERS=$(echo "$WIP_CONFIG" | jq -r '.headers // empty' 2>/dev/null)
-          
-          if [ -z "$WIP_URL" ] || [ "$WIP_URL" = "null" ]; then
-            log_error "Failed to extract URL from workload identity provider configuration"
-            exit 1
-          fi
-          
-          # Get GitHub Actions OIDC token (must be requested - not automatically available)
-          # GitHub provides ACTIONS_ID_TOKEN_REQUEST_TOKEN and ACTIONS_ID_TOKEN_REQUEST_URL when id-token: write permission is set
-          log_info "Requesting GitHub OIDC token..."
-          # Append audience parameter (use ? if URL has no query params, & if it does)
-          if [[ "$ACTIONS_ID_TOKEN_REQUEST_URL" == *"?"* ]]; then
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://auth.hashicorp.com"
-          else
-            OIDC_REQUEST_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}?audience=https://auth.hashicorp.com"
-          fi
-          GITHUB_OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$OIDC_REQUEST_URL" | jq -r '.value // empty' 2>/dev/null)
-          
-          if [ -z "$GITHUB_OIDC_TOKEN" ] || [ "$GITHUB_OIDC_TOKEN" = "null" ]; then
-            log_error "Failed to obtain GitHub OIDC token"
-            exit 1
-          fi
-          
-          # Exchange GitHub OIDC token for HCP access token using workload identity provider
-          log_info "Exchanging GitHub OIDC token for HCP access token via workload identity provider..."
-          
-          # Build curl command with headers from WIP config
-          CURL_HEADERS=(-H "Content-Type: application/x-www-form-urlencoded")
-          
-          # Add optional headers from WIP config if present
-          if [ -n "$WIP_HEADERS" ] && [ "$WIP_HEADERS" != "null" ]; then
-            # Extract headers and add to array (avoiding subshell issues)
-            while IFS= read -r header_line; do
-              if [ -n "$header_line" ]; then
-                key=$(echo "$header_line" | cut -d':' -f1 | xargs)
-                value=$(echo "$header_line" | cut -d':' -f2- | xargs)
-                if [ -n "$key" ] && [ -n "$value" ]; then
-                  CURL_HEADERS+=(-H "${key}: ${value}")
-                fi
-              fi
-            done < <(echo "$WIP_HEADERS" | jq -r 'to_entries[] | "\(.key): \(.value)"' 2>/dev/null)
-          fi
-          
-          # Execute curl with headers and form data
-          TOKEN_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$WIP_URL" \
-            "${CURL_HEADERS[@]}" \
-            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
-            -d "subject_token=$GITHUB_OIDC_TOKEN" \
-            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
-            -d "requested_token_type=urn:ietf:params:oauth:token-type:access_token" 2>&1)
-          
-          HTTP_CODE=$(echo "$TOKEN_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
-          
-          if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            log_error "Token exchange failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          # Check response structure (safe - only logs keys, not values)
-          RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
-          
-          # Try to extract access token - check multiple possible field names
-          HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
-            log_error "Failed to extract access_token from token exchange response"
-            log_error "HTTP Code: $HTTP_CODE"
-            log_error "Response contains keys: $RESPONSE_KEYS"
-            exit 1
-          fi
-          
-          log_info "Successfully obtained HCP access token"
-          
-          # Get organization ID using HCP CLI (service principals can list their orgs)
-          ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp organizations list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_ORG_ID=$(echo "$ORG_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_ORG_ID" ] || [ "$HCP_ORG_ID" = "null" ]; then
-            log_error "Failed to extract organization ID from 'hcp organizations list --format=json'"
-            exit 1
-          fi
-          
-          # Org ID and Project ID are identifiers, not secrets - safe to log for debugging
-          log_info "Organization ID: $HCP_ORG_ID"
-          
-          # Get project ID using HCP CLI (service principal context already has org set, so this works directly)
-          PROJECT_JSON_OUTPUT=$(hcp projects list --format=json 2>&1)
-          if [ $? -ne 0 ]; then
-            log_error "Failed to run 'hcp projects list'"
-            exit 1
-          fi
-          
-          # Parse JSON array: [{"id": "...", ...}]
-          HCP_PROJECT_ID=$(echo "$PROJECT_JSON_OUTPUT" | jq -r '.[0].id // empty' 2>/dev/null)
-          
-          if [ -z "$HCP_PROJECT_ID" ] || [ "$HCP_PROJECT_ID" = "null" ]; then
-            log_error "Failed to extract project ID from 'hcp projects list --format=json'"
-            exit 1
-          fi
-          
-          log_info "Project ID: $HCP_PROJECT_ID"
-          
-          # Assign iteration to channel via HCP Packer API (PATCH method per API spec)
-          # Endpoint: /organizations/{org_id}/projects/{project_id}/images/{bucket_name}/channels/{channel_name}
-          HCP_BASE_URL="https://api.cloud.hashicorp.com/packer/2021-04-30"
-          CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
-            "${HCP_BASE_URL}/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/homelab-infrastructure-talos/channels/aws-prod-amd64" \
-            --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
-            --header "Content-Type: application/json" \
-            --data "{\"iteration_id\": \"$ITERATION_ID\"}")
-          
-          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
-          RESPONSE_BODY=$(echo "$CHANNEL_RESPONSE" | sed '$d')
-          
-          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
-            log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
-            exit 1
-          fi
-          
-          log_success "Image promoted to aws-prod-amd64 channel."
+          log_success "Image promoted to ${{ matrix.channel }} channel."
