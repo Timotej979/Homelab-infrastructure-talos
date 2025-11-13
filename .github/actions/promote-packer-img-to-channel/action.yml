@@ -198,11 +198,27 @@ runs:
           log_error "Response body structure: $(echo "$RESPONSE_BODY" | jq -c '.' 2>/dev/null | head -c 500)"
           exit 1
         fi
-        log_info "Successfully obtained HCP access token"
+        
+        # Trim whitespace and newlines from token
+        HCP_ACCESS_TOKEN=$(echo "$HCP_ACCESS_TOKEN" | tr -d '\n\r\t ' | xargs)
+        [ -z "$HCP_ACCESS_TOKEN" ] && { log_error "Access token is empty after trimming"; exit 1; }
+        log_info "Successfully obtained HCP access token (length: ${#HCP_ACCESS_TOKEN} chars)"
 
         log_info "Authenticating HCP CLI..."
         hcp auth login --cred-file="$HCP_CRED_FILE" || { log_error "Failed to authenticate HCP CLI"; exit 1; }
         log_success "HCP CLI authenticated successfully."
+
+        # Try to get access token from HCP CLI (this token should have proper permissions)
+        log_info "Obtaining access token from HCP CLI..."
+        HCP_CLI_TOKEN=$(hcp auth print-access-token 2>/dev/null || echo "")
+        if [ -n "$HCP_CLI_TOKEN" ] && [ "$HCP_CLI_TOKEN" != "null" ]; then
+          HCP_CLI_TOKEN=$(echo "$HCP_CLI_TOKEN" | tr -d '\n\r\t ' | xargs)
+          log_info "Using HCP CLI access token for API calls"
+          API_ACCESS_TOKEN="$HCP_CLI_TOKEN"
+        else
+          log_info "HCP CLI token not available, using workload identity token"
+          API_ACCESS_TOKEN="$HCP_ACCESS_TOKEN"
+        fi
 
         log_info "Fetching organization ID..."
         ORG_JSON_OUTPUT=$(hcp organizations list --format=json 2>&1) || { log_error "Failed to run 'hcp organizations list'"; exit 1; }
@@ -217,13 +233,66 @@ runs:
         log_info "Project ID: $HCP_PROJECT_ID"
 
         log_info "Promoting iteration $ITERATION_ID to channel $CHANNEL..."
-        CHANNEL_RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
-          "https://api.cloud.hashicorp.com/packer/2021-04-30/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/${BUCKET_NAME}/channels/${CHANNEL}" \
-          --header "Authorization: Bearer ${HCP_ACCESS_TOKEN}" \
-          --header "Content-Type: application/json" \
-          --data "{\"iteration_id\": \"$ITERATION_ID\"}")
         
-        HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | tail -n 1)
-        [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ] && { log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"; exit 1; }
+        # Prepare the API endpoint
+        API_URL="https://api.cloud.hashicorp.com/packer/2021-04-30/organizations/${HCP_ORG_ID}/projects/${HCP_PROJECT_ID}/images/${BUCKET_NAME}/channels/${CHANNEL}"
+        log_info "API URL: ${API_URL}"
+        
+        # Make the PATCH request with better error handling
+        CHANNEL_RESPONSE_FILE=$(mktemp)
+        CHANNEL_HTTP_CODE_FILE=$(mktemp)
+        CHANNEL_ERROR_FILE=$(mktemp)
+        
+        curl -X PATCH \
+          "$API_URL" \
+          --header "Authorization: Bearer ${API_ACCESS_TOKEN}" \
+          --header "Content-Type: application/json" \
+          --data "{\"iteration_id\": \"$ITERATION_ID\"}" \
+          -w "\n%{http_code}" \
+          -s \
+          -o "$CHANNEL_RESPONSE_FILE" \
+          -D "$CHANNEL_ERROR_FILE" \
+          2>/dev/null > "$CHANNEL_HTTP_CODE_FILE"
+        
+        CURL_EXIT_CODE=$?
+        CHANNEL_RESPONSE=$(cat "$CHANNEL_RESPONSE_FILE" 2>/dev/null || echo "")
+        HTTP_CODE=$(cat "$CHANNEL_HTTP_CODE_FILE" 2>/dev/null | tail -n 1 | tr -d '\n\r' || echo "")
+        HTTP_HEADERS=$(cat "$CHANNEL_ERROR_FILE" 2>/dev/null || echo "")
+        
+        rm -f "$CHANNEL_RESPONSE_FILE" "$CHANNEL_HTTP_CODE_FILE" "$CHANNEL_ERROR_FILE"
+        
+        # Extract HTTP code if it's mixed with response
+        if [ -z "$HTTP_CODE" ] || ! [[ "$HTTP_CODE" =~ ^[0-9]{3}$ ]]; then
+          # Try to extract from the response if it's at the end
+          HTTP_CODE=$(echo "$CHANNEL_RESPONSE" | grep -oE '[0-9]{3}$' | tail -n 1 || echo "")
+          CHANNEL_RESPONSE=$(echo "$CHANNEL_RESPONSE" | sed '$d' || echo "$CHANNEL_RESPONSE")
+        fi
+        
+        if [ "$CURL_EXIT_CODE" != 0 ]; then
+          log_error "Failed to make API request to promote iteration. Curl exit code: $CURL_EXIT_CODE"
+          exit 1
+        fi
+        
+        if [ -z "$HTTP_CODE" ] || ! [[ "$HTTP_CODE" =~ ^[0-9]{3}$ ]]; then
+          log_error "Failed to extract HTTP code from channel promotion response"
+          log_error "Response: $(echo "$CHANNEL_RESPONSE" | head -c 500)"
+          exit 1
+        fi
+        
+        if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "204" ]; then
+          log_error "Failed to assign iteration to channel. HTTP $HTTP_CODE"
+          if [ -n "$CHANNEL_RESPONSE" ]; then
+            log_error "Response body: $(echo "$CHANNEL_RESPONSE" | head -c 1000)"
+          fi
+          if [ -n "$HTTP_HEADERS" ]; then
+            log_error "Response headers: $(echo "$HTTP_HEADERS" | head -c 500)"
+          fi
+          log_error "This might indicate:"
+          log_error "  1. The access token doesn't have sufficient permissions"
+          log_error "  2. The service principal needs 'contributor' role for Packer operations"
+          log_error "  3. The iteration ID or channel name is incorrect"
+          exit 1
+        fi
+        
         log_success "Image promoted to $CHANNEL channel."
 
