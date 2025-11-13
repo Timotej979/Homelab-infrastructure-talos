@@ -87,7 +87,11 @@ runs:
         
         log_info "Making token exchange POST request..."
         # Exit code 5 typically means "Couldn't resolve proxy" - disable proxy to avoid this
-        curl -w "\n%{http_code}" -X POST "$WIP_URL" "${CURL_HEADERS[@]}" \
+        # Capture response body and HTTP code separately
+        # -o writes body to file, -w writes format to stdout, -D writes headers to file
+        HTTP_HEADERS_FILE=$(mktemp)
+        HTTP_CODE_FILE=$(mktemp)
+        curl -X POST "$WIP_URL" "${CURL_HEADERS[@]}" \
           -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
           -d "subject_token=$GITHUB_OIDC_TOKEN" \
           -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
@@ -95,11 +99,28 @@ runs:
           --max-time 30 \
           --connect-timeout 10 \
           --noproxy "*" \
-          -o "$CURL_STDOUT" 2>"$CURL_STDERR"
+          -o "$CURL_STDOUT" \
+          -w "%{http_code}" \
+          -D "$HTTP_HEADERS_FILE" \
+          -s \
+          > "$HTTP_CODE_FILE" \
+          2>"$CURL_STDERR"
         CURL_EXIT_CODE=$?
         TOKEN_RESPONSE=$(cat "$CURL_STDOUT" 2>/dev/null || echo "")
         CURL_ERROR=$(cat "$CURL_STDERR" 2>/dev/null || echo "")
-        rm -f "$CURL_STDERR" "$CURL_STDOUT"
+        HTTP_CODE_RAW=$(cat "$HTTP_CODE_FILE" 2>/dev/null | tr -d '\n\r' || echo "")
+        HTTP_HEADERS=$(cat "$HTTP_HEADERS_FILE" 2>/dev/null || echo "")
+        rm -f "$CURL_STDERR" "$CURL_STDOUT" "$HTTP_CODE_FILE" "$HTTP_HEADERS_FILE"
+        
+        # Extract HTTP code - it should be a 3-digit number
+        # First try to get it from the curl -w output (should be just the number)
+        HTTP_CODE=""
+        # Extract only numeric HTTP code from the raw output, removing any JSON or other text
+        HTTP_CODE=$(echo "$HTTP_CODE_RAW" | grep -oE '[0-9]{3}' | head -n 1 || echo "")
+        # If that failed, try to extract from HTTP headers as fallback
+        if [ -z "$HTTP_CODE" ] && [ -n "$HTTP_HEADERS" ]; then
+          HTTP_CODE=$(echo "$HTTP_HEADERS" | grep -iE '^HTTP/' | head -n 1 | grep -oE '[0-9]{3}' | head -n 1 || echo "")
+        fi
         
         if [ $CURL_EXIT_CODE != 0 ]; then
           log_error "Token exchange request failed with curl exit code $CURL_EXIT_CODE"
@@ -110,9 +131,10 @@ runs:
           else
             log_error "No curl error message captured (stderr was empty)"
           fi
-          if [ -n "$TOKEN_RESPONSE" ]; then
-            HTTP_CODE_CHECK=$(echo "$TOKEN_RESPONSE" | tail -n 1)
-            log_error "Response HTTP code: $HTTP_CODE_CHECK"
+          if [ -n "$HTTP_CODE" ] && [[ "$HTTP_CODE" =~ ^[0-9]{3}$ ]]; then
+            log_error "Response HTTP code: $HTTP_CODE"
+          else
+            log_error "No valid HTTP code captured. Raw output: '${HTTP_CODE_RAW}'"
           fi
           log_error "Failed to reach WIP endpoint at domain: $WIP_DOMAIN"
           log_error "URL format validated: HTTPS protocol confirmed"
@@ -120,13 +142,62 @@ runs:
           exit 1
         fi
         
-        HTTP_CODE=$(echo "$TOKEN_RESPONSE" | tail -n 1)
-        RESPONSE_BODY=$(echo "$TOKEN_RESPONSE" | sed '$d')
-        [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ] && { log_error "Token exchange failed with HTTP $HTTP_CODE"; exit 1; }
+        # Validate HTTP code is numeric and exists
+        if [ -z "$HTTP_CODE" ]; then
+          log_error "Failed to extract HTTP code from response"
+          log_error "Raw HTTP code output: '${HTTP_CODE_RAW}' (first 100 chars)"
+          log_error "Response body length: ${#TOKEN_RESPONSE} chars"
+          log_error "Response body preview: $(echo "$TOKEN_RESPONSE" | head -c 200)"
+          exit 1
+        fi
+        
+        # Validate HTTP code is numeric (must be exactly 3 digits)
+        if ! [[ "$HTTP_CODE" =~ ^[0-9]{3}$ ]]; then
+          log_error "HTTP code is not a valid 3-digit number: '${HTTP_CODE}'"
+          log_error "Raw HTTP code output: '${HTTP_CODE_RAW}'"
+          log_error "Response body length: ${#TOKEN_RESPONSE} chars"
+          log_error "Response body preview: $(echo "$TOKEN_RESPONSE" | head -c 200)"
+          exit 1
+        fi
+        
+        # Response body is already separated (TOKEN_RESPONSE contains just the body)
+        RESPONSE_BODY="$TOKEN_RESPONSE"
+        
+        # Validate HTTP code is success (200-299) - use numeric comparison only after validation
+        HTTP_CODE_NUM=$((HTTP_CODE + 0))  # Convert to integer for safe comparison
+        if [ "$HTTP_CODE_NUM" -lt 200 ] || [ "$HTTP_CODE_NUM" -ge 300 ]; then
+          log_error "Token exchange failed with HTTP $HTTP_CODE"
+          log_error "Response body (first 200 chars): $(echo "$RESPONSE_BODY" | head -c 200)"
+          exit 1
+        fi
 
+        # Validate response is JSON
+        if ! echo "$RESPONSE_BODY" | jq empty 2>/dev/null; then
+          log_error "Token exchange response is not valid JSON"
+          log_error "Response body (first 500 chars): $(echo "$RESPONSE_BODY" | head -c 500)"
+          exit 1
+        fi
+        
         RESPONSE_KEYS=$(echo "$RESPONSE_BODY" | jq -r 'keys | join(", ")' 2>/dev/null || echo "not JSON")
-        HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '.access_token // .token // .accessToken // .value.access_token // .value.token // empty' 2>/dev/null)
-        [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ] && { log_error "Failed to extract access_token from token exchange response. HTTP Code: $HTTP_CODE. Response contains keys: $RESPONSE_KEYS"; exit 1; }
+        log_info "Response contains keys: $RESPONSE_KEYS"
+        
+        # Try multiple token field formats - Azure WIP might return {"value":"token"} format
+        # Also handle nested structures like {"value":{"access_token":"token"}}
+        HCP_ACCESS_TOKEN=$(echo "$RESPONSE_BODY" | jq -r '
+          .access_token // 
+          .token // 
+          .accessToken // 
+          .value // 
+          (if .value | type == "object" then .value.access_token // .value.token else empty end) //
+          empty' 2>/dev/null)
+        
+        if [ -z "$HCP_ACCESS_TOKEN" ] || [ "$HCP_ACCESS_TOKEN" = "null" ]; then
+          log_error "Failed to extract access_token from token exchange response"
+          log_error "HTTP Code: $HTTP_CODE"
+          log_error "Response contains keys: $RESPONSE_KEYS"
+          log_error "Response body structure: $(echo "$RESPONSE_BODY" | jq -c '.' 2>/dev/null | head -c 500)"
+          exit 1
+        fi
         log_info "Successfully obtained HCP access token"
 
         log_info "Authenticating HCP CLI..."
