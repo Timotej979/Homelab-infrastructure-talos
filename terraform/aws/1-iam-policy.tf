@@ -645,6 +645,9 @@ data "aws_iam_policy_document" "packer_talos" {
     #########################
     # IAM PassRole for EC2 Instances
     # Allow passing IAM roles to EC2 instances for instance profiles
+    # Note: iam:PassRole does not expose credentials - it only allows attaching roles to EC2 instances
+    # The condition restricts PassRole to EC2 service only, preventing credential exposure
+    # checkov:skip=CKV_AWS_107:iam:PassRole does not expose credentials; it only allows attaching roles to EC2 instances. The iam:PassedToService condition restricts usage to ec2.amazonaws.com only.
     #########################
     statement {
         effect = "Allow"

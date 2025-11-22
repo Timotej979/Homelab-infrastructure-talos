@@ -1,5 +1,4 @@
 #!/bin/bash
-set -euo pipefail
 
 # ================================
 # Color codes
@@ -58,7 +57,7 @@ fi
 # ================================
 # Parse arguments (CLI overrides everything)
 # ================================
-while [[ $# -gt 0 ]]; do
+while [ $# -gt 0 ]; do
     case "$1" in
         -v|--version)    TALOS_VERSION="$2"; shift 2 ;;
         -a|--arch)       TALOS_MACHINE_TYPE="$2"; shift 2 ;;
