@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Run ShellCheck with SARIF output
-        uses: reactive-firewall/shellcheck-scan@v1.2
+        uses: reactive-firewall/shellcheck-scan@v2.2
         with:
           shell-format: ${{ matrix.shell }}
           publish-artifacts: no
