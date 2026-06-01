@@ -42,7 +42,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run GitLeaks scan on repository
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITLEAKS_NOTIFY_USER_LIST: '@Timotej979'
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
