@@ -44,7 +44,7 @@ jobs:
           python-version: '3.x'
 
       - name: Run Checkov scan and generate SARIF report
-        uses: bridgecrewio/checkov-action@v12.3114.0
+        uses: bridgecrewio/checkov-action@v12.3117.0
         with:
           framework: terraform
           directory: ./terraform
